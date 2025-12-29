@@ -19,11 +19,16 @@ FROM alpine:3.22
 
 WORKDIR /app
 
+## Копируем бинарник
 COPY --from=backend-builder /build/app /app/bin/app
 
-COPY --from=backend-builder build/code/db/migrations /app/db/migrations
+## Копируем миграции
+COPY --from=backend-builder /build/code/db/migrations /app/db/migrations
+
+## Копируем goose
 COPY --from=backend-builder /go/bin/goose /usr/local/bin/goose
 
+## Копируем скрипт запуска
 COPY bin/run.sh /app/bin/run.sh
 RUN chmod +x /app/bin/run.sh
 
