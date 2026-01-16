@@ -1,0 +1,28 @@
+# Определяем список сервисов — services
+# В среде разработки будем использовать только БД PostgreSQL
+services:
+  # Имя образа. Здесь мы используем базу данных Postgres
+  postgres:
+    image: postgres:15-alpine
+    env_file:
+      - .env.development  # явное указание файла
+    container_name: lshortener-postgres-dev
+    # А так задаются переменные окружения
+    environment:
+      POSTGRES_DB: ${DB_NAME}            # Создаст эту БД при первом запуске
+      POSTGRES_USER: ${DB_USER}          # Пользователь
+      POSTGRES_PASSWORD: ${DB_PASSWORD}  # Пароль (простейший для разработки)
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data  # Сохраняем данные между перезапусками
+    # Хелсчек для проверки готовности БД к работе
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # Никаких сложных конфигов - всё по умолчанию
+
+volumes:
+  postgres_dev_data:  # Том для хранения данных БД
