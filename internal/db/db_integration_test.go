@@ -2,6 +2,7 @@
 package db_test
 
 import (
+	"code/internal/config"
 	"code/internal/db/postgres_db"
 	"code/migrations"
 	"context"
@@ -22,10 +23,25 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-var pool *pgxpool.Pool
+var (
+	pool       *pgxpool.Pool
+	testConfig *config.AppConfig
+)
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
+
+	// Устанавливаем APP_ENV=test, чтобы брать данные из .env.test
+	os.Setenv("APP_ENV", "test")
+
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("load test config: %v", err)
+	}
+	testConfig = cfg
+
+	fmt.Printf("Loaded config: APP_ENV=%s, DB_HOST=%s\n, BASE_URL=%s\n",
+		testConfig.APPEnv, testConfig.DBConfig.DBHost, testConfig.BaseURL)
 
 	// Запуск PostgreSQL контейнера
 	container, err := postgres.Run(ctx,
@@ -34,7 +50,6 @@ func TestMain(m *testing.M) {
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("test"),
 		postgres.WithPassword("test"),
-		postgres.WithInitScripts(), // без init.sql, миграции накатываются из кода
 		tc.WithAdditionalWaitStrategy(wait.ForLog("database system is ready to accept connections").
 			WithOccurrence(2).
 			WithStartupTimeout(60*time.Second),
@@ -53,8 +68,10 @@ func TestMain(m *testing.M) {
 		host,
 		port.Port(),
 	)
-
+	//Создание пула соединений
 	pool = NewTestPgxPool(ctx, dsn)
+
+	defer pool.Close()
 
 	// Конвертируем pgxpool.Pool в *sql.DB
 	sqlDB := stdlib.OpenDBFromPool(pool)
@@ -68,7 +85,7 @@ func TestMain(m *testing.M) {
 	if err := goose.Up(sqlDB, "."); err != nil {
 		log.Fatalf("goose up: %v", err)
 	}
-
+	//Запуск тестов
 	code := m.Run()
 	os.Exit(code)
 }
@@ -113,23 +130,23 @@ func withTx(t *testing.T, fn func(ctx context.Context, q *postgres_db.Queries)) 
 	fn(ctx, qtx)
 }
 
-func CreateTestLinks(t *testing.T, ctx context.Context, q *postgres_db.Queries) ([]*postgres_db.CreateLinkRow, error) {
+func CreateTestLinks(t *testing.T, ctx context.Context, q *postgres_db.Queries, baseURL string) ([]*postgres_db.CreateLinkRow, error) {
 	t.Helper()
 	params := []postgres_db.CreateLinkParams{
 		{
 			OriginalUrl: "https://example1.net/very-very-long-short-name?with=queries",
 			ShortName:   "test-short1",
-			ShortUrl:    "https://example.net/test-short1"},
+			ShortUrl:    baseURL + "/test-short1"},
 		{
 			OriginalUrl: "https://example2.net/very-very-long-short-name?with=queries",
 			ShortName:   "test-short2",
-			ShortUrl:    "https://example.net/test-short2"},
+			ShortUrl:    baseURL + "/test-short2"},
 		{
 			OriginalUrl: "https://example3.net/very-very-long-short-name?with=queries",
 			ShortName:   "test-short3",
-			ShortUrl:    "https://example.net/test-short3"},
+			ShortUrl:    baseURL + "/test-short3"},
 	}
-	links := make([]*postgres_db.CreateLinkRow, 0, 3)
+	links := make([]*postgres_db.CreateLinkRow, 0, len(params))
 	for _, v := range params {
 		row, err := q.CreateLink(ctx, v)
 		if err != nil {

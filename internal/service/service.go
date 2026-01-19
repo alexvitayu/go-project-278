@@ -1,13 +1,13 @@
 package service
 
 import (
+	"code/internal/config"
 	store "code/internal/db/postgres_db"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"math/rand"
-	"os"
 	"time"
 )
 
@@ -26,14 +26,26 @@ type CreateLinkInput struct {
 // ErrNotFound возвращается, если запись отсутствует.
 var ErrNotFound = errors.New("product not found")
 
+type LinkServer interface {
+	CreateShortLink(ctx context.Context, shortName, originalUrl string) (*Link, error)
+	GetLinks(ctx context.Context) ([]*Link, error)
+	GetLinkByID(ctx context.Context, id int64) (*Link, error)
+	UpdateLinkByID(ctx context.Context, shortName, originalUrl string, id int64) (*Link, error)
+	DeleteLinkByID(ctx context.Context, id int64) (int64, error)
+}
+
 // LinkService инкапсулирует работу с sqlc-запросами.
 type LinkService struct {
-	q store.Querier
+	q   store.Querier
+	cfg *config.AppConfig
 }
 
 // NewLinkService конструирует сервис поверх sqlc-слоя.
-func NewLinkService(q store.Querier) *LinkService {
-	return &LinkService{q: q}
+func NewLinkService(q store.Querier, config *config.AppConfig) *LinkService {
+	return &LinkService{
+		q:   q,
+		cfg: config,
+	}
 }
 
 // CreateShortLink создаёт короткий url
@@ -47,7 +59,7 @@ func (l *LinkService) CreateShortLink(ctx context.Context, shortName, originalUr
 			return &Link{}, fmt.Errorf("short_name already exists")
 		}
 	}
-	baseUrl := os.Getenv("BASE_URL")
+	baseUrl := l.cfg.BaseURL
 	shortUrl := baseUrl + "/" + shortName
 
 	params := store.CreateLinkParams{
@@ -70,7 +82,7 @@ func (l *LinkService) CreateShortLink(ctx context.Context, shortName, originalUr
 }
 
 // GetLinks возвращает все объекты из БД
-func (l *LinkService) GetLinks(ctx context.Context) ([]Link, error) {
+func (l *LinkService) GetLinks(ctx context.Context) ([]*Link, error) {
 	rows, err := l.q.GetLinks(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -78,9 +90,9 @@ func (l *LinkService) GetLinks(ctx context.Context) ([]Link, error) {
 		}
 		return nil, fmt.Errorf("getLinks: %w", err)
 	}
-	out := make([]Link, 0, len(rows))
+	out := make([]*Link, 0, len(rows))
 	for _, row := range rows {
-		l := Link{
+		l := &Link{
 			ID:          row.ID,
 			OriginalUrl: row.OriginalUrl,
 			ShortName:   row.ShortName,
@@ -91,13 +103,13 @@ func (l *LinkService) GetLinks(ctx context.Context) ([]Link, error) {
 	return out, nil
 }
 
-func (l *LinkService) GetLinkByID(ctx context.Context, id int64) (Link, error) {
+func (l *LinkService) GetLinkByID(ctx context.Context, id int64) (*Link, error) {
 	row, err := l.q.GetLinkByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Link{}, ErrNotFound
+			return &Link{}, ErrNotFound
 		}
-		return Link{}, fmt.Errorf("getLinkByID: %w", err)
+		return &Link{}, fmt.Errorf("getLinkByID: %w", err)
 	}
 	out := Link{
 		ID:          row.ID,
@@ -105,7 +117,7 @@ func (l *LinkService) GetLinkByID(ctx context.Context, id int64) (Link, error) {
 		ShortName:   row.ShortName,
 		ShortUrl:    row.ShortUrl,
 	}
-	return out, nil
+	return &out, nil
 }
 
 func (l *LinkService) UpdateLinkByID(ctx context.Context, shortName, originalUrl string, id int64) (*Link, error) {
@@ -117,7 +129,7 @@ func (l *LinkService) UpdateLinkByID(ctx context.Context, shortName, originalUrl
 		return &Link{}, fmt.Errorf("short_name already exists")
 	}
 
-	baseUrl := os.Getenv("BASE_URL")
+	baseUrl := l.cfg.BaseURL
 	shortUrl := baseUrl + "/" + shortName
 
 	params := store.UpdateLinkByIDParams{
@@ -146,6 +158,7 @@ func (l *LinkService) DeleteLinkByID(ctx context.Context, id int64) (int64, erro
 	if err != nil {
 		return 0, fmt.Errorf("deleteLinkByID: %w", err)
 	}
+
 	return n, nil
 }
 

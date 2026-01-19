@@ -4,5 +4,5 @@
 ### GitHub CI test-and-lint status:
 [![test-and-lint](https://github.com/alexvitayu/go-project-278/actions/workflows/test_lint.yml/badge.svg)](https://github.com/alexvitayu/go-project-278/actions/workflows/test_lint.yml)
 
-### My service is live at:
+### My mock is live at:
 https://go-project-278.onrender.com

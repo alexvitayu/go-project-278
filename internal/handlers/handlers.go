@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"code/internal/service"
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,120 +13,93 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+const Short_name_length = 6
+
 type LinkRequest struct {
 	Original_url string `json:"original_url" validate:"required,url"`
 	Short_name   string `json:"short_name"`
 }
 
-const short_name_length = 6
+type Handler struct {
+	service service.LinkServer
+}
 
-func SetupRouter(ctx context.Context, s *service.LinkService) *gin.Engine {
-	// To initialize Sentry's handler, you need to initialize Sentry itself beforehand
-	if err := sentry.Init(sentry.ClientOptions{
-		Dsn: os.Getenv("SENTRY_DSN"),
-		// Enable structured logs to Sentry
-		EnableLogs: true,
-	}); err != nil {
-		fmt.Printf("Sentry initialization failed: %v\n", err)
+func NewHandler(s service.LinkServer) *Handler {
+	return &Handler{service: s}
+}
+
+func (h *Handler) CreateLink(c *gin.Context) {
+	request := GetRequestAndValidate(c)
+	shortName := request.Short_name
+	if shortName == "" {
+		shortName = service.GenerateShortName(Short_name_length)
+	}
+	link, err := h.service.CreateShortLink(c.Request.Context(), shortName, request.Original_url)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusCreated, &link)
+	return
+}
+
+func (h *Handler) GetLinks(c *gin.Context) {
+	links, err := h.service.GetLinks(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, &links)
+	return
+}
+
+func (h *Handler) GetLinkByID(c *gin.Context) {
+	id := GetIDFromRequest(c)
+	link, err := h.service.GetLinkByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, &link)
+	return
+}
+
+func (h *Handler) UpdateLinkByID(c *gin.Context) {
+	id := GetIDFromRequest(c)
+
+	request := GetRequestAndValidate(c)
+
+	shortName := request.Short_name
+	if shortName == "" {
+		shortName = service.GenerateShortName(Short_name_length)
 	}
 
-	// Create my app
-	router := gin.Default()
-
-	// Once it's done, you can attach the handler as one of your middleware
-	router.Use(sentrygin.New(sentrygin.Options{
-		Repanic: true,
-	}))
-
-	router.NoRoute(func(c *gin.Context) {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error":   "Not Found",
-			"message": "requested API endpoint doesn't exist",
+	link, err := h.service.UpdateLinkByID(c.Request.Context(), shortName, request.Original_url, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
 		})
-	})
-
-	// POST /api/links
-	router.POST("/api/links", func(c *gin.Context) {
-		request := GetRequestAndValidate(c)
-		shortName := request.Short_name
-		if shortName == "" {
-			shortName = service.GenerateShortName(short_name_length)
-		}
-		link, err := s.CreateShortLink(ctx, shortName, request.Original_url)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
-
-		c.JSON(http.StatusCreated, &link)
 		return
-	})
+	}
+	c.JSON(http.StatusOK, &link)
+}
 
-	// GET /api/links - возвращает список всех ссылок
-	router.GET("/api/links", func(c *gin.Context) {
-		links, err := s.GetLinks(ctx)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, &links)
-		return
-	})
-
-	// GET /api/links/:id
-	router.GET("/api/links/:id", func(c *gin.Context) {
-		id := GetIDFromRequest(c)
-		link, err := s.GetLinkByID(ctx, id)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
-		c.JSON(http.StatusOK, &link)
-		return
-	})
-
-	// PUT /api/links/:id
-	router.PUT("/api/links/:id", func(c *gin.Context) {
-		id := GetIDFromRequest(c)
-
-		request := GetRequestAndValidate(c)
-
-		shortName := request.Short_name
-		if shortName == "" {
-			shortName = service.GenerateShortName(short_name_length)
-		}
-
-		link, err := s.UpdateLinkByID(ctx, shortName, request.Original_url, id)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
-		c.JSON(http.StatusOK, &link)
-	})
-
-	// DELETE /api/links/:id
-	router.DELETE("/api/links/:id", func(c *gin.Context) {
-		id := GetIDFromRequest(c)
-		n, err := s.DeleteLinkByID(ctx, id)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
-		}
-		c.JSON(http.StatusNoContent, gin.H{
-			"deleted": n,
+func (h *Handler) DeleteLinkByID(c *gin.Context) {
+	id := GetIDFromRequest(c)
+	deleted, err := h.service.DeleteLinkByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
 		})
-	})
-	return router
+		return
+	}
+	c.JSON(http.StatusNoContent, &deleted)
 }
 
 func GetRequestAndValidate(c *gin.Context) *LinkRequest {
@@ -160,4 +132,31 @@ func GetIDFromRequest(c *gin.Context) int64 {
 		return 0
 	}
 	return int64(intID)
+}
+
+func SetupRouter() *gin.Engine {
+	// To initialize Sentry's handler, you need to initialize Sentry itself beforehand
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn: os.Getenv("SENTRY_DSN"),
+		// Enable structured logs to Sentry
+		EnableLogs: true,
+	}); err != nil {
+		fmt.Printf("Sentry initialization failed: %v\n", err)
+	}
+
+	// Create my app
+	router := gin.Default()
+
+	// Once it's done, you can attach the handler as one of your middleware
+	router.Use(sentrygin.New(sentrygin.Options{
+		Repanic: true,
+	}))
+
+	router.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":   "Not Found",
+			"message": "requested API endpoint doesn't exist",
+		})
+	})
+	return router
 }

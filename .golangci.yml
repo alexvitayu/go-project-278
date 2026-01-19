@@ -20,7 +20,6 @@ linters:
   # See the comment on top of this file.
   enable:
     - bodyclose
-    - copyloopvar
     - depguard
     - dogsled
     - dupl
