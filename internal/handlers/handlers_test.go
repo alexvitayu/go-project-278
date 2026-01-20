@@ -105,7 +105,7 @@ func TestHandler_GetLinks(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	require.NoError(t, err)
 
-	assert.Equal(t, 2, len(response))
+	assert.Len(t, response, 2)
 
 	assert.Equal(t, expectedShortUrl1, response[0].ShortUrl)
 	assert.Equal(t, expectedShortUrl2, response[1].ShortUrl)

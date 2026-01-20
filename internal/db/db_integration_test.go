@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -57,7 +56,10 @@ func TestMain(m *testing.M) {
 		port.Port(),
 	)
 	//Создание пула соединений
-	pool = NewTestPgxPool(ctx, dsn)
+	pool, err = NewTestPgxPool(ctx, dsn)
+	if err != nil {
+		log.Fatalf("creation pool: %v", err)
+	}
 
 	defer pool.Close()
 
@@ -78,17 +80,17 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func NewTestPgxPool(ctx context.Context, dsn string) *pgxpool.Pool {
-	pool, err := pgxpool.New(ctx, dsn)
+func NewTestPgxPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
+	p, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
 
-	if err := pool.Ping(ctx); err != nil {
-		log.Fatal(err)
+	if err := p.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("fail to ping database: %w", err)
 	}
 
-	return pool
+	return p, nil
 }
 
 func withTx(t *testing.T, fn func(ctx context.Context, q *postgres_db.Queries)) {

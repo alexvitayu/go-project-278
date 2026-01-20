@@ -1,5 +1,11 @@
-include .env.development
-export
+ifeq (,$(wildcard .env.development))
+    ifneq (,$(wildcard .env.example))
+        $(info 📝 Creating .env.development from .env.example...)
+        $(shell cp .env.example .env.development)
+    endif
+endif
+
+-include .env.development
 # ====================
 # BUILD
 # ====================

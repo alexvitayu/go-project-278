@@ -79,7 +79,7 @@ func TestLinkService_GetLinks(t *testing.T) {
 
 		links, err := s.GetLinks(ctx)
 		require.NoError(t, err)
-		require.Equal(t, len(mockedRows), len(links))
+		require.Len(t, links, len(mockedRows))
 		assert.Equal(t, mockedRows[0].ID, links[0].ID)
 		assert.Equal(t, mockedRows[1].ShortUrl, links[1].ShortUrl)
 	})
@@ -166,7 +166,6 @@ func TestLinkService_UpdateLinkByID(t *testing.T) {
 	assert.Equal(t, newShortName, link.ShortName)
 	assert.Equal(t, expectedNewShortUrl, link.ShortUrl)
 	m.AssertExpectations(t)
-
 }
 
 func TestLinkService_DeleteLinkByID(t *testing.T) {
@@ -200,9 +199,9 @@ func TestGenerateShortName(t *testing.T) {
 		tc := tc // создаём копию
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			str := service.GenerateShortName(tc.size)
-			assert.Equal(t, tc.want, len(str))
+			str, err := service.GenerateShortName(tc.size)
+			require.NoError(t, err)
+			assert.Len(t, str, tc.want)
 		})
 	}
-
 }

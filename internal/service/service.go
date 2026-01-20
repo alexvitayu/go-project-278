@@ -4,11 +4,11 @@ import (
 	"code/internal/config"
 	store "code/internal/db/postgres_db"
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/rand"
-	"time"
+	"io"
 )
 
 type Link struct {
@@ -162,15 +162,17 @@ func (l *LinkService) DeleteLinkByID(ctx context.Context, id int64) (int64, erro
 	return n, nil
 }
 
-func GenerateShortName(size int) string {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	chars := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+func GenerateShortName(size int) (string, error) {
+	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
 		"abcdefghijklmnopqrstuvwxyz" +
-		"0123456789")
-	b := make([]rune, size)
-	for i := range b {
-		b[i] = chars[r.Intn(len(chars))]
+		"0123456789"
+	buffer := make([]byte, size)
+	if _, err := io.ReadFull(rand.Reader, buffer); err != nil {
+		return "", err
 	}
-	return string(b)
+	result := make([]byte, size)
+	for i, b := range buffer {
+		result[i] = chars[int(b)%len(chars)]
+	}
+	return string(result), nil
 }

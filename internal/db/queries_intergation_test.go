@@ -58,7 +58,7 @@ func Test_GetLinks(t *testing.T) {
 		require.NoError(t, err)
 		got, err := q.GetLinks(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, len(links), len(got))
+		assert.Len(t, got, len(links))
 	})
 }
 

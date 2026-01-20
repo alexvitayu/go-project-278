@@ -16,15 +16,16 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib" // blank identifier означает, что пакет импортирован без прямого использования в коде
 )
 
-func main() {
+const DefaultTimeout = 30 * time.Minute
 
+func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Создаём контекст с таймаутом. Если база "зависла", приложение не будет ждать бесконечно.
-	ctx, cancel := context.WithTimeout(context.Background(), 1800*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancel()
 
 	pool, err := NewPgxPool(ctx, cfg)
@@ -45,6 +46,7 @@ func main() {
 
 	handlers := handlers.NewHandler(service)
 
+	router.GET("/", handlers.HomePage)
 	router.POST("/api/links", handlers.CreateLink)
 	router.GET("/api/links", handlers.GetLinks)
 	router.GET("/api/links/:id", handlers.GetLinkByID)
@@ -64,8 +66,14 @@ func NewPgxPool(ctx context.Context, cfg *config.AppConfig) (*pgxpool.Pool, erro
 	if err != nil {
 		return nil, fmt.Errorf("parse conf: %w", err)
 	}
-	maxConns, _ := strconv.Atoi(cfg.PoolConfig.DBMaxConns)
-	minConns, _ := strconv.Atoi(cfg.PoolConfig.DBMaxIdleConns)
+	maxConns, err := strconv.ParseInt(cfg.PoolConfig.DBMaxConns, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("parseInt: %w", err)
+	}
+	minConns, err := strconv.ParseInt(cfg.PoolConfig.DBMaxIdleConns, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("parseInt: %w", err)
+	}
 	maxLifetime, _ := time.ParseDuration(cfg.PoolConfig.DBConnMaxLifetime)
 	conf.MaxConns = int32(maxConns)
 	conf.MinConns = int32(minConns)

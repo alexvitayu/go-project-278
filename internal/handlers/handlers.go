@@ -28,11 +28,23 @@ func NewHandler(s service.LinkServer) *Handler {
 	return &Handler{service: s}
 }
 
+func (h *Handler) HomePage(c *gin.Context) {
+	_ = h
+	c.JSON(http.StatusOK, "URL Shortener API is running!...")
+}
+
 func (h *Handler) CreateLink(c *gin.Context) {
 	request := GetRequestAndValidate(c)
 	shortName := request.Short_name
 	if shortName == "" {
-		shortName = service.GenerateShortName(Short_name_length)
+		short, err := service.GenerateShortName(Short_name_length)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		shortName = short
 	}
 	link, err := h.service.CreateShortLink(c.Request.Context(), shortName, request.Original_url)
 	if err != nil {
@@ -42,7 +54,6 @@ func (h *Handler) CreateLink(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, &link)
-	return
 }
 
 func (h *Handler) GetLinks(c *gin.Context) {
@@ -54,7 +65,6 @@ func (h *Handler) GetLinks(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, &links)
-	return
 }
 
 func (h *Handler) GetLinkByID(c *gin.Context) {
@@ -67,7 +77,6 @@ func (h *Handler) GetLinkByID(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, &link)
-	return
 }
 
 func (h *Handler) UpdateLinkByID(c *gin.Context) {
@@ -77,7 +86,14 @@ func (h *Handler) UpdateLinkByID(c *gin.Context) {
 
 	shortName := request.Short_name
 	if shortName == "" {
-		shortName = service.GenerateShortName(Short_name_length)
+		short, err := service.GenerateShortName(Short_name_length)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		shortName = short
 	}
 
 	link, err := h.service.UpdateLinkByID(c.Request.Context(), shortName, request.Original_url, id)
