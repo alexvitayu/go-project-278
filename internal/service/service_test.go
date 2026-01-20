@@ -3,10 +3,9 @@ package service_test
 import (
 	"code/internal/config"
 	"code/internal/db/postgres_db"
-	service "code/internal/service"
+	"code/internal/service"
 	"code/internal/service/mocks"
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,7 +41,6 @@ func TestLinkService_CreateShortLink_Success(t *testing.T) {
 	})
 	// Act
 	link, err := s.CreateShortLink(ctx, shortName, originalUrl)
-	fmt.Printf("shortUrl: %v\n", link.ShortUrl)
 	// Assert
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), link.ID)

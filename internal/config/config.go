@@ -18,12 +18,13 @@ type AppConfig struct {
 }
 
 type DBConfig struct {
-	DBHost     string
-	DBPort     string
-	DBName     string
-	DBUser     string
-	DBPassword string
-	DBSSLMode  string
+	DATABASE_URL string
+	DBHost       string
+	DBPort       string
+	DBName       string
+	DBUser       string
+	DBPassword   string
+	DBSSLMode    string
 }
 
 type PoolConfig struct {
@@ -48,20 +49,22 @@ func Load() (*AppConfig, error) {
 	}
 
 	// Загружаем env файл для конкретной среды
-	envFile := fmt.Sprintf(".env.%s", env)
-	if _, err := os.Stat(envFile); err == nil {
-		if err := godotenv.Load(envFile); err != nil {
-			return nil, fmt.Errorf("loading %s: %w", envFile, err)
+	if env == "development" {
+		if _, err := os.Stat(".env.development"); err == nil {
+			if err := godotenv.Load(".env.development"); err != nil {
+				return nil, fmt.Errorf("loading %s: %w", ".env.development", err)
+			}
 		}
 	}
 
 	dbConfig := DBConfig{
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBName:     getEnvRequired("DB_NAME"),
-		DBUser:     getEnvRequired("DB_USER"),
-		DBPassword: getEnvRequired("DB_PASSWORD"),
-		DBSSLMode:  getEnv("DB_SSL_MODE", "disable"),
+		DATABASE_URL: getEnv("DATABASE_URL", ""),
+		DBHost:       getEnv("DB_HOST", "localhost"),
+		DBPort:       getEnv("DB_PORT", "5432"),
+		DBName:       getEnv("DB_NAME", ""),
+		DBUser:       getEnv("DB_USER", ""),
+		DBPassword:   getEnv("DB_PASSWORD", ""),
+		DBSSLMode:    getEnv("DB_SSL_MODE", "disable"),
 	}
 
 	// Получаем значения из переменных окружения
@@ -76,7 +79,7 @@ func Load() (*AppConfig, error) {
 			DBConnMaxLifetime: getEnv("DB_CONN_MAX_LIFETIME", "30m"),
 		},
 		GooseConfig: GooseConfig{
-			GooseDBString: dbConfig.ConnectionString(),
+			GooseDBString: dbConfig.DATABASE_URL,
 			GooseDriver:   getEnv("GOOSE_DRIVER", "postgres"),
 		},
 		SentryConfig: SentryConfig{
@@ -94,18 +97,4 @@ func getEnv(key, defaultValue string) string {
 		return defaultValue
 	}
 	return value
-}
-
-// getEnvRequired получает обязательную переменную окружения
-func getEnvRequired(key string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		panic(fmt.Sprintf("required environment variable %s is not set", key))
-	}
-	return value
-}
-
-func (c *DBConfig) ConnectionString() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		c.DBUser, c.DBPassword, c.DBHost, c.DBPort, c.DBName, c.DBSSLMode)
 }

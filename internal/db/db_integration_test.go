@@ -2,7 +2,6 @@
 package db_test
 
 import (
-	"code/internal/config"
 	"code/internal/db/postgres_db"
 	"code/migrations"
 	"context"
@@ -23,25 +22,14 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+const BASE_URL = "http://localhost:8080"
+
 var (
-	pool       *pgxpool.Pool
-	testConfig *config.AppConfig
+	pool *pgxpool.Pool
 )
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
-
-	// Устанавливаем APP_ENV=test, чтобы брать данные из .env.test
-	os.Setenv("APP_ENV", "test")
-
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("load test config: %v", err)
-	}
-	testConfig = cfg
-
-	fmt.Printf("Loaded config: APP_ENV=%s, DB_HOST=%s\n, BASE_URL=%s\n",
-		testConfig.APPEnv, testConfig.DBConfig.DBHost, testConfig.BaseURL)
 
 	// Запуск PostgreSQL контейнера
 	container, err := postgres.Run(ctx,

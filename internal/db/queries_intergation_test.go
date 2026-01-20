@@ -14,10 +14,10 @@ import (
 func Test_CreateLink(t *testing.T) {
 	t.Parallel()
 	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
-		links, err := CreateTestLinks(t, ctx, q, testConfig.BaseURL)
+		links, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
 
-		assert.Equal(t, testConfig.BaseURL+"/test-short1", links[0].ShortUrl)
+		assert.Equal(t, BASE_URL+"/test-short1", links[0].ShortUrl)
 
 		getLink, err := q.GetLinkByID(ctx, links[0].ID)
 		require.NoError(t, err)
@@ -28,7 +28,7 @@ func Test_CreateLink(t *testing.T) {
 func Test_DeleteLinkByID(t *testing.T) {
 	t.Parallel()
 	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
-		links, err := CreateTestLinks(t, ctx, q, testConfig.BaseURL)
+		links, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
 
 		n, err := q.DeleteLinkByID(ctx, links[0].ID)
@@ -43,7 +43,7 @@ func Test_DeleteLinkByID(t *testing.T) {
 func Test_GetLinkByID(t *testing.T) {
 	t.Parallel()
 	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
-		links, err := CreateTestLinks(t, ctx, q, testConfig.BaseURL)
+		links, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
 		got, err := q.GetLinkByID(ctx, links[0].ID)
 		require.NoError(t, err)
@@ -54,7 +54,7 @@ func Test_GetLinkByID(t *testing.T) {
 func Test_GetLinks(t *testing.T) {
 	t.Parallel()
 	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
-		links, err := CreateTestLinks(t, ctx, q, testConfig.BaseURL)
+		links, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
 		got, err := q.GetLinks(ctx)
 		require.NoError(t, err)
@@ -65,21 +65,21 @@ func Test_GetLinks(t *testing.T) {
 func Test_UpdateLinkByID(t *testing.T) {
 	t.Parallel()
 	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
-		links, err := CreateTestLinks(t, ctx, q, testConfig.BaseURL)
+		links, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
 
 		updateParams := postgres_db.UpdateLinkByIDParams{
 			ID:          links[1].ID,
 			OriginalUrl: "https://example2.net/very-very-long-short-name?with=queries",
 			ShortName:   "new_short_name2",
-			ShortUrl:    testConfig.BaseURL + "/new_short_name2",
+			ShortUrl:    BASE_URL + "/new_short_name2",
 		}
 		got, err := q.UpdateLinkByID(ctx, updateParams)
 		require.NoError(t, err)
 
 		link, err := q.GetLinkByID(ctx, got.ID)
 		require.NoError(t, err)
-		assert.Equal(t, testConfig.BaseURL+"/new_short_name2", got.ShortUrl)
+		assert.Equal(t, BASE_URL+"/new_short_name2", got.ShortUrl)
 		assert.Equal(t, link.ShortUrl, got.ShortUrl)
 		assert.NotEqual(t, links[got.ID].ShortUrl, link.ShortUrl)
 	})

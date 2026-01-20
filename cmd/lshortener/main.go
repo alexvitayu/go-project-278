@@ -5,7 +5,6 @@ import (
 	"code/internal/db/postgres_db"
 	"code/internal/handlers"
 	"code/internal/service"
-	"code/migrations"
 	"context"
 	"fmt"
 	"log"
@@ -36,10 +35,6 @@ func main() {
 
 	log.Println("✅ Database connected")
 
-	if err = migrations.Up(pool); err != nil {
-		log.Fatal(err)
-	}
-
 	queries := postgres_db.New(pool)
 
 	service := service.NewLinkService(queries, cfg)
@@ -56,14 +51,16 @@ func main() {
 	router.PUT("/api/links/:id", handlers.UpdateLinkByID)
 	router.DELETE("/api/links/:id", handlers.DeleteLinkByID)
 
-	if err := router.Run(":8080"); err != nil {
-		log.Fatalf("не удалось запустить сервер: %v", err)
+	port := cfg.ServerPort
+
+	if err := router.Run(fmt.Sprintf("0.0.0.0:%v", port)); err != nil {
+		log.Fatalf("не удалось запустить сервер на порту %v: %v", port, err)
 	}
 }
 
 func NewPgxPool(ctx context.Context, cfg *config.AppConfig) (*pgxpool.Pool, error) {
 	// Парсим конфиг из DSN
-	conf, err := pgxpool.ParseConfig(cfg.DBConfig.ConnectionString())
+	conf, err := pgxpool.ParseConfig(cfg.DBConfig.DATABASE_URL)
 	if err != nil {
 		return nil, fmt.Errorf("parse conf: %w", err)
 	}

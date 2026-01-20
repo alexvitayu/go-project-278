@@ -22,18 +22,21 @@ COPY . .
 
 # Собираем приложение
 RUN --mount=type=cache,target=/root/.cache/go-build \
-  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ./bin/app ./cmd/lshortener
+  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -o ./bin/lshortener ./cmd/lshortener
 
 # 3) Runtime
 FROM alpine:3.22
 
 WORKDIR /app
 
+# Устанавливаем bash и необходимые пакеты, т.к. в run.sh используется bash
+RUN apk add --no-cache bash postgresql-client ca-certificates
+
 # Устанавливаем необходимые пакеты для работы с PostgreSQL
 RUN apk add --no-cache postgresql-client ca-certificates
 
 ## Копируем бинарник
-COPY --from=backend-builder /app/bin/app ./bin/app
+COPY --from=backend-builder /app/bin/lshortener ./bin/lshortener
 
 ## Копируем миграции
 COPY --from=backend-builder /app/migrations ./migrations
