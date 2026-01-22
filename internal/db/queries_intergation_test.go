@@ -56,7 +56,10 @@ func Test_GetLinks(t *testing.T) {
 	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
 		links, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
-		got, err := q.GetLinks(ctx)
+		got, err := q.GetLinks(ctx, postgres_db.GetLinksParams{
+			Limit:  3,
+			Offset: 0,
+		})
 		require.NoError(t, err)
 		assert.Len(t, got, len(links))
 	})

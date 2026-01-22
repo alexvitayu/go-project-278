@@ -28,9 +28,14 @@ func (m *MockQuerier) GetLinkByID(ctx context.Context, id int64) (postgres_db.Ge
 	return args.Get(0).(postgres_db.GetLinkByIDRow), args.Error(1)
 }
 
-func (m *MockQuerier) GetLinks(ctx context.Context) ([]postgres_db.GetLinksRow, error) {
-	args := m.Called(ctx)
+func (m *MockQuerier) GetLinks(ctx context.Context, arg postgres_db.GetLinksParams) ([]postgres_db.GetLinksRow, error) {
+	args := m.Called(ctx, arg)
 	return args.Get(0).([]postgres_db.GetLinksRow), args.Error(1)
+}
+
+func (m *MockQuerier) GetTotalLinks(ctx context.Context) (int64, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 func (m *MockQuerier) UpdateLinkByID(ctx context.Context, arg postgres_db.UpdateLinkByIDParams) (postgres_db.UpdateLinkByIDRow, error) {

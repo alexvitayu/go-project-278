@@ -16,9 +16,9 @@ func (m *MockLinkService) CreateShortLink(ctx context.Context, shortname, origin
 	return args.Get(0).(*service.Link), args.Error(1)
 }
 
-func (m *MockLinkService) GetLinks(ctx context.Context) ([]*service.Link, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]*service.Link), args.Error(1)
+func (m *MockLinkService) GetLinks(ctx context.Context, limit, offset int32) ([]*service.Link, int64, error) {
+	args := m.Called(ctx, limit, offset)
+	return args.Get(0).([]*service.Link), args.Get(1).(int64), args.Error(2)
 }
 
 func (m *MockLinkService) GetLinkByID(ctx context.Context, id int64) (*service.Link, error) {

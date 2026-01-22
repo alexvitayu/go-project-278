@@ -28,7 +28,7 @@ var ErrNotFound = errors.New("product not found")
 
 type LinkServer interface {
 	CreateShortLink(ctx context.Context, shortName, originalUrl string) (*Link, error)
-	GetLinks(ctx context.Context) ([]*Link, error)
+	GetLinks(ctx context.Context, limit, offset int32) ([]*Link, int64, error)
 	GetLinkByID(ctx context.Context, id int64) (*Link, error)
 	UpdateLinkByID(ctx context.Context, shortName, originalUrl string, id int64) (*Link, error)
 	DeleteLinkByID(ctx context.Context, id int64) (int64, error)
@@ -50,7 +50,7 @@ func NewLinkService(q store.Querier, config *config.AppConfig) *LinkService {
 
 // CreateShortLink создаёт короткий url
 func (l *LinkService) CreateShortLink(ctx context.Context, shortName, originalUrl string) (*Link, error) {
-	links, err := l.q.GetLinks(ctx)
+	links, err := l.q.GetLinks(ctx, store.GetLinksParams{})
 	if err != nil {
 		return &Link{}, fmt.Errorf("createShortLink: %w", err)
 	}
@@ -82,25 +82,35 @@ func (l *LinkService) CreateShortLink(ctx context.Context, shortName, originalUr
 }
 
 // GetLinks возвращает все объекты из БД
-func (l *LinkService) GetLinks(ctx context.Context) ([]*Link, error) {
-	rows, err := l.q.GetLinks(ctx)
+func (l *LinkService) GetLinks(ctx context.Context, limit, offset int32) ([]*Link, int64, error) {
+	_ = limit
+	_ = offset
+
+	rows, err := l.q.GetLinks(ctx, store.GetLinksParams{
+		Limit:  limit,
+		Offset: offset,
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
+			return nil, 0, fmt.Errorf("getLinks: %w", ErrNotFound)
 		}
-		return nil, fmt.Errorf("getLinks: %w", err)
+		return nil, 0, fmt.Errorf("getLinks: %w", err)
 	}
 	out := make([]*Link, 0, len(rows))
 	for _, row := range rows {
-		l := &Link{
+		link := &Link{
 			ID:          row.ID,
 			OriginalUrl: row.OriginalUrl,
 			ShortName:   row.ShortName,
 			ShortUrl:    row.ShortUrl,
 		}
-		out = append(out, l)
+		out = append(out, link)
 	}
-	return out, nil
+	total, err := l.q.GetTotalLinks(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("getTotalLinks: %w", err)
+	}
+	return out, total, nil
 }
 
 func (l *LinkService) GetLinkByID(ctx context.Context, id int64) (*Link, error) {

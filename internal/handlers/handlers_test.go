@@ -6,6 +6,7 @@ import (
 	"code/internal/handlers/mocks"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -89,13 +90,13 @@ func TestHandler_GetLinks(t *testing.T) {
 	expectedShortUrl1 := "http://localhost:8080/test1"
 	expectedShortUrl2 := "http://localhost:8080/test2"
 
-	m.On("GetLinks", mock.Anything).Return([]*service.Link{
+	m.On("GetLinks", mock.Anything, int32(2), int32(0)).Return([]*service.Link{
 		{ID: 1, OriginalUrl: "http://test1@gmail.com/long1", ShortName: "test1", ShortUrl: "http://localhost:8080/test1"},
 		{ID: 2, OriginalUrl: "http://test2@gmail.com/long2", ShortName: "test2", ShortUrl: "http://localhost:8080/test2"},
-	}, nil)
+	}, int64(2), nil)
 
 	//Act
-	req := httptest.NewRequest("GET", "/api/links", nil)
+	req := httptest.NewRequest("GET", "/api/links?range=[0,2]", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -187,4 +188,63 @@ func TestHandler_DeleteLinkByID(t *testing.T) {
 
 	assert.Equal(t, expectedCode, w.Code)
 	m.AssertExpectations(t)
+}
+
+func TestSaveConvertToInt32(t *testing.T) {
+	t.Parallel()
+	var testCases = []struct {
+		name  string
+		input int
+		err   bool
+	}{
+		{name: "maxInt32_case", input: math.MaxInt32, err: false},
+		{name: "minInt32_case", input: math.MinInt32, err: false},
+		{name: "greater_than_maxInt32_case", input: math.MaxInt32 + 1, err: true},
+		{name: "less_than_minInt32_case", input: math.MinInt32 - 1, err: true},
+		{name: "in_range_case", input: 800, err: false},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := handlers.SaveConvertToInt32(tc.input)
+			if !tc.err {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+}
+
+func TestParseAndValidateQuery(t *testing.T) {
+	var testCases = []struct {
+		name       string
+		input      string
+		wantLimit  int32
+		wantOffset int32
+		err        bool
+	}{
+		{name: "successful_input", input: "[5,10]", wantOffset: 5, wantLimit: 5, err: false},
+		{name: "empty_string_input", input: "", wantOffset: handlers.Default_Offset,
+			wantLimit: handlers.Default_Limit, err: false},
+		{name: "len_input_more_than_two", input: "[0,,45]", wantLimit: 0, wantOffset: 0, err: true},
+		{name: "range_begin_less_than_zero", input: "[-4,45]", wantLimit: 0, wantOffset: 0, err: true},
+		{name: "range_end_less_than_begin", input: "[45,4]", wantLimit: 0, wantOffset: 0, err: true},
+		{name: "range_end_equal_begin", input: "[45,45]", wantLimit: 0, wantOffset: 0, err: true},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			limit, offset, err := handlers.ParseAndValidateQuery(tc.input)
+			if !tc.err {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+			assert.Equal(t, tc.wantLimit, limit)
+			assert.Equal(t, tc.wantOffset, offset)
+		})
+	}
 }

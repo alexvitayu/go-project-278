@@ -4,7 +4,12 @@ SELECT
     original_url,
     short_name,
     short_url
-FROM links;
+FROM links
+ORDER BY id
+LIMIT $1 OFFSET $2;
+
+-- name: GetTotalLinks :one
+    SELECT COUNT(id) AS total_links FROM links;
 
 -- name: CreateLink :one
 INSERT INTO links(original_url, short_name, short_url)

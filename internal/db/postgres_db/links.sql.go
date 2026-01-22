@@ -87,7 +87,14 @@ SELECT
     short_name,
     short_url
 FROM links
+ORDER BY id
+LIMIT $1 OFFSET $2
 `
+
+type GetLinksParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
 
 type GetLinksRow struct {
 	ID          int64  `json:"id"`
@@ -96,8 +103,8 @@ type GetLinksRow struct {
 	ShortUrl    string `json:"short_url"`
 }
 
-func (q *Queries) GetLinks(ctx context.Context) ([]GetLinksRow, error) {
-	rows, err := q.db.Query(ctx, getLinks)
+func (q *Queries) GetLinks(ctx context.Context, arg GetLinksParams) ([]GetLinksRow, error) {
+	rows, err := q.db.Query(ctx, getLinks, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +126,17 @@ func (q *Queries) GetLinks(ctx context.Context) ([]GetLinksRow, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const getTotalLinks = `-- name: GetTotalLinks :one
+    SELECT COUNT(id) AS total_links FROM links
+`
+
+func (q *Queries) GetTotalLinks(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getTotalLinks)
+	var total_links int64
+	err := row.Scan(&total_links)
+	return total_links, err
 }
 
 const updateLinkByID = `-- name: UpdateLinkByID :one

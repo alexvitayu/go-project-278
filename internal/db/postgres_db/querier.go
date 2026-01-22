@@ -12,7 +12,8 @@ type Querier interface {
 	CreateLink(ctx context.Context, arg CreateLinkParams) (CreateLinkRow, error)
 	DeleteLinkByID(ctx context.Context, id int64) (int64, error)
 	GetLinkByID(ctx context.Context, id int64) (GetLinkByIDRow, error)
-	GetLinks(ctx context.Context) ([]GetLinksRow, error)
+	GetLinks(ctx context.Context, arg GetLinksParams) ([]GetLinksRow, error)
+	GetTotalLinks(ctx context.Context) (int64, error)
 	UpdateLinkByID(ctx context.Context, arg UpdateLinkByIDParams) (UpdateLinkByIDRow, error)
 }
 

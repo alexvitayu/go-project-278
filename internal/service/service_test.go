@@ -14,7 +14,7 @@ import (
 
 const baseUrl = "http://localhost:8081"
 
-func TestLinkService_CreateShortLink_Success(t *testing.T) {
+func TestLinkService_CreateShortLink(t *testing.T) {
 	t.Parallel()
 	// Arrange
 	ctx := context.Background()
@@ -23,7 +23,7 @@ func TestLinkService_CreateShortLink_Success(t *testing.T) {
 	shortName := "test"
 	expectedShortUrl := baseUrl + "/" + shortName
 
-	m.On("GetLinks", ctx).Return([]postgres_db.GetLinksRow{}, nil).Once()
+	m.On("GetLinks", ctx, postgres_db.GetLinksParams{}).Return([]postgres_db.GetLinksRow{}, nil).Once()
 
 	m.On("CreateLink", ctx, postgres_db.CreateLinkParams{
 		OriginalUrl: originalUrl,
@@ -55,6 +55,7 @@ func TestLinkService_GetLinks(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		m := new(mocks.MockQuerier)
+		expectTotalLinks := int64(2)
 
 		mockedRows := []postgres_db.GetLinksRow{
 			{
@@ -71,15 +72,21 @@ func TestLinkService_GetLinks(t *testing.T) {
 			},
 		}
 
-		m.On("GetLinks", ctx).Return(mockedRows, nil).Once()
+		m.On("GetLinks", ctx, postgres_db.GetLinksParams{
+			Limit:  2,
+			Offset: 0,
+		}).Return(mockedRows, nil).Once()
+
+		m.On("GetTotalLinks", ctx).Return(int64(2), nil)
 
 		s := service.NewLinkService(m, &config.AppConfig{
 			BaseURL: baseUrl,
 		})
 
-		links, err := s.GetLinks(ctx)
+		links, total, err := s.GetLinks(ctx, 2, 0)
 		require.NoError(t, err)
 		require.Len(t, links, len(mockedRows))
+		assert.Equal(t, expectTotalLinks, total)
 		assert.Equal(t, mockedRows[0].ID, links[0].ID)
 		assert.Equal(t, mockedRows[1].ShortUrl, links[1].ShortUrl)
 	})
@@ -90,11 +97,17 @@ func TestLinkService_GetLinks(t *testing.T) {
 
 		mockedRows := []postgres_db.GetLinksRow{}
 
-		m.On("GetLinks", ctx).Return(mockedRows, nil).Once()
+		m.On("GetLinks", ctx, postgres_db.GetLinksParams{
+			Limit:  2,
+			Offset: 0,
+		}).Return(mockedRows, nil).Once()
+
+		m.On("GetTotalLinks", ctx).Return(int64(2), nil)
 
 		s := service.NewLinkService(m, &config.AppConfig{})
 
-		links, err := s.GetLinks(ctx)
+		links, total, err := s.GetLinks(ctx, 2, 0)
+		_ = total
 		require.NoError(t, err)
 		require.Empty(t, links)
 		m.AssertExpectations(t)
