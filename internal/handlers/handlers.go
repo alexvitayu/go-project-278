@@ -17,7 +17,7 @@ import (
 
 const (
 	Short_name_length = 6
-	Default_Limit     = 5
+	Default_Limit     = 10
 	Default_Offset    = 0
 	Max_Limit         = 30
 )

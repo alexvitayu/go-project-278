@@ -27,6 +27,13 @@ test:
 	go test ./... -v -race
 
 # ====================
+# LAUNCH FRONTEND + BACKEND
+# ====================
+run:
+	concurrently 'npx start-hexlet-url-shortener-frontend' 'go run ./cmd/lshortener'
+
+
+# ====================
 # DEVELOPMENT (основные команды)
 # ====================
 

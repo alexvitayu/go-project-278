@@ -3,7 +3,9 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/joho/godotenv"
 )
 
@@ -97,4 +99,22 @@ func getEnv(key, defaultValue string) string {
 		return defaultValue
 	}
 	return value
+}
+
+func SetCORSConfig(env string) cors.Config {
+	if env == "production" {
+		return cors.Config{
+			AllowOrigins:     []string{"https://go-project-278.onrender.com"},
+			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Length", "Content-Range"},
+			AllowCredentials: true,
+			MaxAge:           12 * time.Hour,
+		}
+	}
+	return cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowMethods:     []string{"*"},
+		AllowHeaders:     []string{"*"},
+		AllowCredentials: true,
+	}
 }

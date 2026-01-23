@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // blank identifier означает, что пакет импортирован без прямого использования в коде
@@ -43,6 +44,11 @@ func main() {
 	router := handlers.SetupRouter()
 
 	router.Use(gin.Recovery())
+
+	// Cross-Origin Resource Sharing - это с каких сайтов разрешено делать запросы к моему API
+	router.Use(cors.New(config.SetCORSConfig(cfg.APPEnv)))
+	fmt.Printf("APP_ENV= %v\n", cfg.APPEnv)
+	fmt.Printf("Config= %v\n", config.SetCORSConfig(cfg.APPEnv))
 
 	handlers := handlers.NewHandler(service)
 
