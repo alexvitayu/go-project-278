@@ -72,7 +72,7 @@ func Load() (*AppConfig, error) {
 	// Получаем значения из переменных окружения
 	config := &AppConfig{
 		APPEnv:     env,
-		ServerPort: getEnv("PORT", "8080"),
+		ServerPort: getEnv("APP_PORT", "8080"),
 		BaseURL:    getEnv("BASE_URL", "http://localhost:8080"),
 		DBConfig:   dbConfig,
 		PoolConfig: PoolConfig{
@@ -106,7 +106,8 @@ func SetCORSConfig(env string) cors.Config {
 		return cors.Config{
 			AllowOrigins:     []string{"https://go-project-278.onrender.com"},
 			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Length", "Content-Range"},
+			AllowHeaders:     []string{"Origin", "Content-Length", "Content-Range", "Content-Type", "Authorization", "Accept", "Range"},
+			ExposeHeaders:    []string{"Content-Range"},
 			AllowCredentials: true,
 			MaxAge:           12 * time.Hour,
 		}

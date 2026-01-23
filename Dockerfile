@@ -1,11 +1,20 @@
-# Build backend
+# 1) Build frontend
+FROM node:24-alpine AS frontend-builder
+WORKDIR /build/frontend
+
+COPY package*.json ./
+
+RUN --mount=type=cache,target=/root/.npm \
+  npm ci npm ci --prefer-offline --no-audit
+
+# 2) Build backend
 FROM golang:1.25-alpine AS backend-builder
 
 # Устанавливаем необходимые инструменты
 RUN apk add --no-cache git
 
 # Рабочая директория
-WORKDIR /app
+WORKDIR /build/code
 
 # Копируем файлы зависимостей
 COPY go.mod go.sum ./
@@ -29,25 +38,31 @@ FROM alpine:3.22
 
 WORKDIR /app
 
-# Устанавливаем bash и необходимые пакеты, т.к. в run.sh используется bash
-RUN apk add --no-cache bash postgresql-client ca-certificates
-
-# Устанавливаем необходимые пакеты для работы с PostgreSQL
-RUN apk add --no-cache postgresql-client ca-certificates
+# Устанавливаем Caddy, bash, пакеты для PostgreQSL + зависимости
+RUN apk add --no-cache \
+    bash \
+    postgresql-client \
+    ca-certificates \
+    caddy
 
 ## Копируем бинарник
-COPY --from=backend-builder /app/bin/lshortener ./bin/lshortener
+COPY --from=backend-builder /build/code/bin/lshortener /app/bin/lshortener
+COPY --from=frontend-builder \
+  /build/frontend/node_modules/@hexlet/project-url-shortener-frontend/dist \
+  /app/public
 
 ## Копируем миграции
-COPY --from=backend-builder /app/migrations ./migrations
+COPY --from=backend-builder /build/code/migrations /app/migrations
 
 ## Копируем goose
 COPY --from=backend-builder /go/bin/goose /usr/local/bin/goose
 
 ## Копируем скрипт запуска
-COPY bin/run.sh ./bin/run.sh
-RUN chmod +x ./bin/run.sh
+COPY bin/run.sh /app/bin/run.sh
+RUN chmod +x /app/bin/run.sh
 
-EXPOSE 8080
+COPY Caddyfile /etc/caddy/Caddyfile
 
-CMD ["./bin/run.sh"]
+EXPOSE 80
+
+CMD ["/app/bin/run.sh"]
