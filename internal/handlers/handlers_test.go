@@ -36,6 +36,7 @@ func setUpRouter(t *testing.T) (*gin.Engine, *mocks.MockLinkService) {
 	router.GET("/api/links/:id", handler.GetLinkByID)
 	router.PUT("/api/links/:id", handler.UpdateLinkByID)
 	router.DELETE("/api/links/:id", handler.DeleteLinkByID)
+	router.GET("/r/:code", handler.RedirectByShortName)
 
 	return router, mock
 }
@@ -187,6 +188,29 @@ func TestHandler_DeleteLinkByID(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, expectedCode, w.Code)
+	m.AssertExpectations(t)
+}
+
+func TestHandler_RedirectByShortName(t *testing.T) {
+	t.Parallel()
+	router, m := setUpRouter(t)
+	shortName := "short"
+	expectedOriginalUrl := "https://test1@mail.ru/redirect"
+	expectedStatusCode := http.StatusMovedPermanently
+
+	m.On("GetOriginalURLByShortName", mock.Anything, shortName).
+		Return(&service.Link{
+			ID:          1,
+			OriginalUrl: expectedOriginalUrl,
+			ShortName:   shortName,
+		}, nil).Once()
+
+	req := httptest.NewRequest("GET", fmt.Sprintf("/r/%s", shortName), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, expectedStatusCode, w.Code)
+	assert.Equal(t, expectedOriginalUrl, w.Header().Get("Location"))
 	m.AssertExpectations(t)
 }
 

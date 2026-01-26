@@ -87,3 +87,17 @@ func Test_UpdateLinkByID(t *testing.T) {
 		assert.NotEqual(t, links[got.ID].ShortUrl, link.ShortUrl)
 	})
 }
+
+func Test_GetOriginalURLByShortName(t *testing.T) {
+	t.Parallel()
+	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
+		_, err := CreateTestLinks(t, ctx, q, BASE_URL)
+		require.NoError(t, err)
+		shortName := "test-short3"
+		expectedOriginalURL := "https://example3.net/very-very-long-short-name?with=queries"
+		got, err := q.GetOriginalURLByShortName(ctx, shortName)
+		require.NoError(t, err)
+
+		assert.Equal(t, expectedOriginalURL, got.OriginalUrl)
+	})
+}

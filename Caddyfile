@@ -1,4 +1,4 @@
-:80 {
+:{$PORT} {
     # Статика из /app/public
     root * /app/public
 
@@ -12,8 +12,13 @@
         file_server
     }
 
-    # Всё остальное — в приложение на 8080
-    handle {
+    # Обращение к эндпоинтам — в приложение на 8080
+    handle /api/* {
+        reverse_proxy localhost:8080
+    }
+
+    # Редиректы перенаправляются в приложение на 8080
+    handle /r/* {
         reverse_proxy localhost:8080
     }
 }

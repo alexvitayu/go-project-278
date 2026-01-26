@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"code/internal/service"
+	"database/sql"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -134,6 +136,30 @@ func (h *Handler) DeleteLinkByID(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusNoContent, &deleted)
+}
+
+func (h *Handler) RedirectByShortName(c *gin.Context) {
+	shortName := c.Param("code")
+	if shortName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "point out short_name",
+		})
+		return
+	}
+	link, err := h.service.GetOriginalURLByShortName(c.Request.Context(), shortName)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "link not found",
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.Redirect(http.StatusMovedPermanently, link.OriginalUrl)
 }
 
 func GetRequestAndValidate(c *gin.Context) *LinkRequest {

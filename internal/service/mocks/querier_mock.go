@@ -33,6 +33,11 @@ func (m *MockQuerier) GetLinks(ctx context.Context, arg postgres_db.GetLinksPara
 	return args.Get(0).([]postgres_db.GetLinksRow), args.Error(1)
 }
 
+func (m *MockQuerier) GetOriginalURLByShortName(ctx context.Context, shortName string) (postgres_db.GetOriginalURLByShortNameRow, error) {
+	args := m.Called(ctx, shortName)
+	return args.Get(0).(postgres_db.GetOriginalURLByShortNameRow), args.Error(1)
+}
+
 func (m *MockQuerier) GetTotalLinks(ctx context.Context) (int64, error) {
 	args := m.Called(ctx)
 	return args.Get(0).(int64), args.Error(1)

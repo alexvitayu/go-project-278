@@ -32,6 +32,7 @@ type LinkServer interface {
 	GetLinkByID(ctx context.Context, id int64) (*Link, error)
 	UpdateLinkByID(ctx context.Context, shortName, originalUrl string, id int64) (*Link, error)
 	DeleteLinkByID(ctx context.Context, id int64) (int64, error)
+	GetOriginalURLByShortName(ctx context.Context, shortName string) (*Link, error)
 }
 
 // LinkService инкапсулирует работу с sqlc-запросами.
@@ -159,6 +160,19 @@ func (l *LinkService) UpdateLinkByID(ctx context.Context, shortName, originalUrl
 		OriginalUrl: row.OriginalUrl,
 		ShortName:   row.ShortName,
 		ShortUrl:    row.ShortUrl,
+	}
+	return out, nil
+}
+
+func (l *LinkService) GetOriginalURLByShortName(ctx context.Context, shortName string) (*Link, error) {
+	link, err := l.q.GetOriginalURLByShortName(ctx, shortName)
+	if err != nil {
+		return &Link{}, fmt.Errorf("getOriginalURLByShortName: %w", err)
+	}
+	out := &Link{
+		ID:          link.ID,
+		OriginalUrl: link.OriginalUrl,
+		ShortName:   shortName,
 	}
 	return out, nil
 }

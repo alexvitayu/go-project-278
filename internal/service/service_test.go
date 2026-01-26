@@ -198,6 +198,27 @@ func TestLinkService_DeleteLinkByID(t *testing.T) {
 	m.AssertExpectations(t)
 }
 
+func TestLinkService_GetOriginalURLByShortName(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	m := new(mocks.MockQuerier)
+	shortName := "test1"
+	expectedOriginalURL := "https://testexample@mail.ru"
+
+	m.On("GetOriginalURLByShortName", ctx, shortName).
+		Return(postgres_db.GetOriginalURLByShortNameRow{
+			ID:          1,
+			OriginalUrl: expectedOriginalURL,
+		}, nil).Once()
+
+	s := service.NewLinkService(m, &config.AppConfig{})
+	link, err := s.GetOriginalURLByShortName(ctx, shortName)
+	require.NoError(t, err)
+
+	assert.Equal(t, expectedOriginalURL, link.OriginalUrl)
+	m.AssertExpectations(t)
+}
+
 func TestGenerateShortName(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {

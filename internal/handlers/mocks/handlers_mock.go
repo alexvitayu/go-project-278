@@ -35,3 +35,8 @@ func (m *MockLinkService) DeleteLinkByID(ctx context.Context, id int64) (int64, 
 	args := m.Called(ctx, id)
 	return args.Get(0).(int64), args.Error(1)
 }
+
+func (m *MockLinkService) GetOriginalURLByShortName(ctx context.Context, shortName string) (*service.Link, error) {
+	args := m.Called(ctx, shortName)
+	return args.Get(0).(*service.Link), args.Error(1)
+}

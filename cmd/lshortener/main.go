@@ -47,8 +47,9 @@ func main() {
 
 	// Cross-Origin Resource Sharing - это с каких сайтов разрешено делать запросы к моему API
 	router.Use(cors.New(config.SetCORSConfig(cfg.APPEnv)))
-	fmt.Printf("APP_ENV= %v\n", cfg.APPEnv)
-	fmt.Printf("Config= %v\n", config.SetCORSConfig(cfg.APPEnv))
+
+	// Cloudflare для определения реального IP-адреса клиента
+	router.TrustedPlatform = gin.PlatformCloudflare
 
 	handlers := handlers.NewHandler(service)
 
@@ -58,6 +59,7 @@ func main() {
 	router.GET("/api/links/:id", handlers.GetLinkByID)
 	router.PUT("/api/links/:id", handlers.UpdateLinkByID)
 	router.DELETE("/api/links/:id", handlers.DeleteLinkByID)
+	router.GET("/r/:code", handlers.RedirectByShortName)
 
 	port := cfg.ServerPort
 

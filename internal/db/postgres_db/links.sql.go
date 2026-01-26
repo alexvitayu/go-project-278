@@ -128,6 +128,22 @@ func (q *Queries) GetLinks(ctx context.Context, arg GetLinksParams) ([]GetLinksR
 	return items, nil
 }
 
+const getOriginalURLByShortName = `-- name: GetOriginalURLByShortName :one
+SELECT id, original_url FROM links WHERE short_name = $1
+`
+
+type GetOriginalURLByShortNameRow struct {
+	ID          int64  `json:"id"`
+	OriginalUrl string `json:"original_url"`
+}
+
+func (q *Queries) GetOriginalURLByShortName(ctx context.Context, shortName string) (GetOriginalURLByShortNameRow, error) {
+	row := q.db.QueryRow(ctx, getOriginalURLByShortName, shortName)
+	var i GetOriginalURLByShortNameRow
+	err := row.Scan(&i.ID, &i.OriginalUrl)
+	return i, err
+}
+
 const getTotalLinks = `-- name: GetTotalLinks :one
     SELECT COUNT(id) AS total_links FROM links
 `
