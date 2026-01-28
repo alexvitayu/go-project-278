@@ -4,6 +4,7 @@ package mocks
 
 import (
 	"code/internal/db/postgres_db"
+	"code/internal/db/visits"
 	"context"
 
 	"github.com/stretchr/testify/mock"
@@ -46,4 +47,23 @@ func (m *MockQuerier) GetTotalLinks(ctx context.Context) (int64, error) {
 func (m *MockQuerier) UpdateLinkByID(ctx context.Context, arg postgres_db.UpdateLinkByIDParams) (postgres_db.UpdateLinkByIDRow, error) {
 	args := m.Called(ctx, arg)
 	return args.Get(0).(postgres_db.UpdateLinkByIDRow), args.Error(1)
+}
+
+type MockVisits struct {
+	mock.Mock
+}
+
+func (mv *MockVisits) CreateVisit(ctx context.Context, arg visits.CreateVisitParams) error {
+	args := mv.Called(ctx, arg)
+	return args.Error(0)
+}
+
+func (mv *MockVisits) GetVisits(ctx context.Context, arg visits.GetVisitsParams) ([]visits.GetVisitsRow, error) {
+	args := mv.Called(ctx, arg)
+	return args.Get(0).([]visits.GetVisitsRow), args.Error(1)
+}
+
+func (mv *MockVisits) GetTotalVisits(ctx context.Context) (int64, error) {
+	args := mv.Called(ctx)
+	return args.Get(0).(int64), args.Error(1)
 }

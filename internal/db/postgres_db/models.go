@@ -15,3 +15,13 @@ type Link struct {
 	ShortUrl    string             `json:"short_url"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
+
+type Visit struct {
+	ID        int64              `json:"id"`
+	LinkID    int64              `json:"link_id"`
+	Ip        string             `json:"ip"`
+	UserAgent string             `json:"user_agent"`
+	Referer   pgtype.Text        `json:"referer"`
+	Status    int32              `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}

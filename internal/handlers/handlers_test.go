@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"code/internal/service"
@@ -19,12 +20,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setUpRouter(t *testing.T) (*gin.Engine, *mocks.MockLinkService) {
+func setUpRouter(t *testing.T) (*gin.Engine, *mocks.MockLinkService, *mocks.MockVisitService) {
 	t.Helper()
 
 	// Создадим моковое хранилище и передадим хендлерам
-	mock := new(mocks.MockLinkService)
-	handler := handlers.NewHandler(mock)
+	linkMock := new(mocks.MockLinkService)
+	visitMock := new(mocks.MockVisitService)
+	handler := handlers.NewHandler(linkMock, visitMock)
 
 	// Создадим тестовый роутер
 	gin.SetMode(gin.TestMode)
@@ -37,14 +39,15 @@ func setUpRouter(t *testing.T) (*gin.Engine, *mocks.MockLinkService) {
 	router.PUT("/api/links/:id", handler.UpdateLinkByID)
 	router.DELETE("/api/links/:id", handler.DeleteLinkByID)
 	router.GET("/r/:code", handler.RedirectByShortName)
+	router.GET("/api/link_visits", handler.GetVisits)
 
-	return router, mock
+	return router, linkMock, visitMock
 }
 
 func TestHandler_CreateLink(t *testing.T) {
 	t.Parallel()
 	// Arrange
-	router, m := setUpRouter(t)
+	router, m, _ := setUpRouter(t)
 
 	requestParams := map[string]string{
 		"original_url": "https://example.com/very/long/url",
@@ -86,7 +89,7 @@ func TestHandler_CreateLink(t *testing.T) {
 func TestHandler_GetLinks(t *testing.T) {
 	t.Parallel()
 	//Arrange
-	router, m := setUpRouter(t)
+	router, m, _ := setUpRouter(t)
 
 	expectedShortUrl1 := "http://localhost:8080/test1"
 	expectedShortUrl2 := "http://localhost:8080/test2"
@@ -116,7 +119,7 @@ func TestHandler_GetLinks(t *testing.T) {
 
 func TestHandler_GetLinkByID(t *testing.T) {
 	t.Parallel()
-	router, m := setUpRouter(t)
+	router, m, _ := setUpRouter(t)
 
 	linkID := int64(4)
 	expectedShortUrl := "http://localhost:8080/test1"
@@ -142,7 +145,7 @@ func TestHandler_GetLinkByID(t *testing.T) {
 
 func TestHandler_UpdateLinkByID(t *testing.T) {
 	t.Parallel()
-	router, m := setUpRouter(t)
+	router, m, _ := setUpRouter(t)
 
 	linkID := int64(3)
 	expectedShortUrl := "http://localhost:8080/updated"
@@ -175,7 +178,7 @@ func TestHandler_UpdateLinkByID(t *testing.T) {
 
 func TestHandler_DeleteLinkByID(t *testing.T) {
 	t.Parallel()
-	router, m := setUpRouter(t)
+	router, m, _ := setUpRouter(t)
 
 	linkID := int64(5)
 	expectedCode := http.StatusNoContent
@@ -193,25 +196,66 @@ func TestHandler_DeleteLinkByID(t *testing.T) {
 
 func TestHandler_RedirectByShortName(t *testing.T) {
 	t.Parallel()
-	router, m := setUpRouter(t)
+	router, linkMock, visitMock := setUpRouter(t)
 	shortName := "short"
 	expectedOriginalUrl := "https://test1@mail.ru/redirect"
-	expectedStatusCode := http.StatusMovedPermanently
+	expectedStatusCode := http.StatusFound
 
-	m.On("GetOriginalURLByShortName", mock.Anything, shortName).
+	linkMock.On("GetOriginalURLByShortName", mock.Anything, shortName).
 		Return(&service.Link{
 			ID:          1,
 			OriginalUrl: expectedOriginalUrl,
 			ShortName:   shortName,
 		}, nil).Once()
 
+	visitMock.On("CreateVisit", mock.Anything, int64(1), "192.0.2.1", "curl/8.14.1", "", int32(302)).
+		Return(nil).Once()
+
 	req := httptest.NewRequest("GET", fmt.Sprintf("/r/%s", shortName), nil)
+	req.Header.Set("User-Agent", "curl/8.14.1")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, expectedStatusCode, w.Code)
 	assert.Equal(t, expectedOriginalUrl, w.Header().Get("Location"))
-	m.AssertExpectations(t)
+	linkMock.AssertExpectations(t)
+	visitMock.AssertExpectations(t)
+}
+
+func TestHandler_GetVisits(t *testing.T) {
+	t.Parallel()
+	router, _, visitMock := setUpRouter(t)
+
+	expected := []*service.Visit{
+		{
+			Link_ID:   2,
+			IP:        "192.168.87.876",
+			UserAgent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 YaBrowser/24.1.0.0 Safari/537.36",
+			Status:    302,
+		},
+		{
+			Link_ID:   2,
+			IP:        "192.168.34.189",
+			UserAgent: "curl/8.14.1",
+			Status:    302,
+		},
+	}
+
+	visitMock.On("GetVisits", mock.Anything, int32(2), int32(0)).
+		Return(expected, int64(2), nil).Once()
+
+	req := httptest.NewRequest("GET", "/api/link_visits?range=[0,2]", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	var response []*service.Visit
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	require.NoError(t, err)
+
+	assert.Equal(t, expected[0], response[0])
+	assert.Equal(t, expected[1], response[1])
+
+	visitMock.AssertExpectations(t)
 }
 
 func TestSaveConvertToInt32(t *testing.T) {
@@ -242,6 +286,8 @@ func TestSaveConvertToInt32(t *testing.T) {
 }
 
 func TestParseAndValidateQuery(t *testing.T) {
+	t.Parallel()
+
 	var testCases = []struct {
 		name       string
 		input      string
@@ -249,19 +295,24 @@ func TestParseAndValidateQuery(t *testing.T) {
 		wantOffset int32
 		err        bool
 	}{
-		{name: "successful_input", input: "[5,10]", wantOffset: 5, wantLimit: 5, err: false},
-		{name: "empty_string_input", input: "", wantOffset: handlers.Default_Offset,
+		{name: "successful_input", input: "/api/links?range=[5,10]", wantOffset: 5, wantLimit: 5, err: false},
+		{name: "empty_string_input", input: "/api/links", wantOffset: handlers.Default_Offset,
 			wantLimit: handlers.Default_Limit, err: false},
-		{name: "len_input_more_than_two", input: "[0,,45]", wantLimit: 0, wantOffset: 0, err: true},
-		{name: "range_begin_less_than_zero", input: "[-4,45]", wantLimit: 0, wantOffset: 0, err: true},
-		{name: "range_end_less_than_begin", input: "[45,4]", wantLimit: 0, wantOffset: 0, err: true},
-		{name: "range_end_equal_begin", input: "[45,45]", wantLimit: 0, wantOffset: 0, err: true},
+		{name: "len_input_more_than_two", input: "/api/links?range=[0,,45]", wantLimit: 0, wantOffset: 0, err: true},
+		{name: "range_begin_less_than_zero", input: "/api/links?range=[-4,45]", wantLimit: 0, wantOffset: 0, err: true},
+		{name: "range_end_less_than_begin", input: "/api/links?range=[45,4]", wantLimit: 0, wantOffset: 0, err: true},
+		{name: "range_end_equal_begin", input: "/api/links?range=[45,45]", wantLimit: 0, wantOffset: 0, err: true},
 	}
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			limit, offset, err := handlers.ParseAndValidateQuery(tc.input)
+			w := httptest.NewRecorder()
+			url := tc.input
+			req := httptest.NewRequest("GET", url, nil)
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+			limit, offset, err := handlers.ParseAndValidateQuery(c)
 			if !tc.err {
 				require.NoError(t, err)
 			} else {
@@ -271,4 +322,17 @@ func TestParseAndValidateQuery(t *testing.T) {
 			assert.Equal(t, tc.wantOffset, offset)
 		})
 	}
+}
+
+func TestGetIDFromRequest(t *testing.T) {
+	t.Parallel()
+	id := "15"
+	d, err := strconv.Atoi(id)
+	require.NoError(t, err)
+	want := int64(d)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: id}}
+	got := handlers.GetIDFromRequest(c)
+	assert.Equal(t, want, got)
 }

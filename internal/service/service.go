@@ -3,12 +3,16 @@ package service
 import (
 	"code/internal/config"
 	store "code/internal/db/postgres_db"
+	"code/internal/db/visits"
 	"context"
 	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
 	"io"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Link struct {
@@ -16,6 +20,15 @@ type Link struct {
 	OriginalUrl string `json:"original_url"`
 	ShortName   string `json:"short_name"`
 	ShortUrl    string `json:"short_url"`
+}
+
+type Visit struct {
+	ID        int       `json:"id"`
+	Link_ID   int       `json:"link_id"`
+	CreatedAt time.Time `json:"created_at"`
+	IP        string    `json:"ip"`
+	UserAgent string    `json:"user_agent"`
+	Status    int       `json:"status"`
 }
 
 type CreateLinkInput struct {
@@ -35,10 +48,19 @@ type LinkServer interface {
 	GetOriginalURLByShortName(ctx context.Context, shortName string) (*Link, error)
 }
 
+type VisitServer interface {
+	CreateVisit(ctx context.Context, id int64, ip, agent string, referer string, status int32) error
+	GetVisits(ctx context.Context, limit, offset int32) ([]*Visit, int64, error)
+}
+
 // LinkService инкапсулирует работу с sqlc-запросами.
 type LinkService struct {
 	q   store.Querier
 	cfg *config.AppConfig
+}
+
+type VisitsService struct {
+	s visits.Querier
 }
 
 // NewLinkService конструирует сервис поверх sqlc-слоя.
@@ -47,6 +69,10 @@ func NewLinkService(q store.Querier, config *config.AppConfig) *LinkService {
 		q:   q,
 		cfg: config,
 	}
+}
+
+func NewVisitService(v visits.Querier) VisitsService {
+	return VisitsService{s: v}
 }
 
 // CreateShortLink создаёт короткий url
@@ -84,9 +110,6 @@ func (l *LinkService) CreateShortLink(ctx context.Context, shortName, originalUr
 
 // GetLinks возвращает все объекты из БД
 func (l *LinkService) GetLinks(ctx context.Context, limit, offset int32) ([]*Link, int64, error) {
-	_ = limit
-	_ = offset
-
 	rows, err := l.q.GetLinks(ctx, store.GetLinksParams{
 		Limit:  limit,
 		Offset: offset,
@@ -182,7 +205,6 @@ func (l *LinkService) DeleteLinkByID(ctx context.Context, id int64) (int64, erro
 	if err != nil {
 		return 0, fmt.Errorf("deleteLinkByID: %w", err)
 	}
-
 	return n, nil
 }
 
@@ -199,4 +221,65 @@ func GenerateShortName(size int) (string, error) {
 		result[i] = chars[int(b)%len(chars)]
 	}
 	return string(result), nil
+}
+
+func (v *VisitsService) CreateVisit(ctx context.Context, id int64, ip, agent string, referer string, status int32) error {
+	if err := v.s.CreateVisit(ctx, visits.CreateVisitParams{
+		LinkID:    id,
+		Ip:        ip,
+		UserAgent: agent,
+		Referer:   StrToText(referer),
+		Status:    status,
+	}); err != nil {
+		return fmt.Errorf("createVisit: %w", err)
+	}
+	return nil
+}
+
+func (v *VisitsService) GetVisits(ctx context.Context, limit, offset int32) ([]*Visit, int64, error) {
+	rows, err := v.s.GetVisits(ctx, visits.GetVisitsParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, 0, fmt.Errorf("getVisits: %w", ErrNotFound)
+		}
+		return nil, 0, fmt.Errorf("getVisits: %w", err)
+	}
+	out := make([]*Visit, 0, len(rows))
+	for _, row := range rows {
+		t, convErr := ConvertTime(row.CreatedAt)
+		if convErr != nil {
+			return nil, 0, fmt.Errorf("getVisits: %w", err)
+		}
+		visit := &Visit{
+			ID:        int(row.ID),
+			Link_ID:   int(row.LinkID),
+			CreatedAt: t,
+			IP:        row.Ip,
+			UserAgent: row.UserAgent,
+			Status:    int(row.Status),
+		}
+		out = append(out, visit)
+	}
+	total, err := v.s.GetTotalVisits(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("getTotalVisits: %w", err)
+	}
+	return out, total, nil
+}
+
+func StrToText(val string) pgtype.Text {
+	return pgtype.Text{
+		String: val,
+		Valid:  val != "",
+	}
+}
+
+func ConvertTime(t pgtype.Timestamptz) (time.Time, error) {
+	if !t.Valid {
+		return time.Time{}, errors.New("invalid timestamp")
+	}
+	return t.Time, nil
 }

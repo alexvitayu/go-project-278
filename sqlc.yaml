@@ -2,11 +2,22 @@ version: "2"
 sql:
   - engine: "postgresql"
     schema: "migrations"
-    queries: "queries"
+    queries: "queries/links.sql"
     gen:
       go:
         sql_package: "pgx/v5"
         package: "postgres_db"
         out: "internal/db/postgres_db"
+        emit_json_tags: true
+        emit_interface: true
+
+  - engine: "postgresql"
+    schema: "migrations"
+    queries: "queries/visits.sql"
+    gen:
+      go:
+        sql_package: "pgx/v5"
+        package: "visits"
+        out: "internal/db/visits"
         emit_json_tags: true
         emit_interface: true

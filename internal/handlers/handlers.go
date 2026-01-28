@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"code/internal/service"
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -30,11 +31,12 @@ type LinkRequest struct {
 }
 
 type Handler struct {
-	service service.LinkServer
+	linkService  service.LinkServer
+	visitService service.VisitServer
 }
 
-func NewHandler(s service.LinkServer) *Handler {
-	return &Handler{service: s}
+func NewHandler(ls service.LinkServer, vs service.VisitServer) *Handler {
+	return &Handler{linkService: ls, visitService: vs}
 }
 
 func (h *Handler) HomePage(c *gin.Context) {
@@ -55,7 +57,7 @@ func (h *Handler) CreateLink(c *gin.Context) {
 		}
 		shortName = short
 	}
-	link, err := h.service.CreateShortLink(c.Request.Context(), shortName, request.Original_url)
+	link, err := h.linkService.CreateShortLink(c.Request.Context(), shortName, request.Original_url)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -66,30 +68,12 @@ func (h *Handler) CreateLink(c *gin.Context) {
 }
 
 func (h *Handler) GetLinks(c *gin.Context) {
-	query := c.Query("range")
-
-	limit, offset, err := ParseAndValidateQuery(query)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	links, total, err := h.service.GetLinks(c.Request.Context(), limit, offset)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-	c.Header("Content-Range", fmt.Sprintf("links %d-%d/%d", offset, limit+offset, total))
-	c.JSON(http.StatusOK, &links)
+	handleGetWithRange[*service.Link](c, h.linkService.GetLinks, "links")
 }
 
 func (h *Handler) GetLinkByID(c *gin.Context) {
 	id := GetIDFromRequest(c)
-	link, err := h.service.GetLinkByID(c.Request.Context(), id)
+	link, err := h.linkService.GetLinkByID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -116,7 +100,7 @@ func (h *Handler) UpdateLinkByID(c *gin.Context) {
 		shortName = short
 	}
 
-	link, err := h.service.UpdateLinkByID(c.Request.Context(), shortName, request.Original_url, id)
+	link, err := h.linkService.UpdateLinkByID(c.Request.Context(), shortName, request.Original_url, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -128,7 +112,7 @@ func (h *Handler) UpdateLinkByID(c *gin.Context) {
 
 func (h *Handler) DeleteLinkByID(c *gin.Context) {
 	id := GetIDFromRequest(c)
-	deleted, err := h.service.DeleteLinkByID(c.Request.Context(), id)
+	deleted, err := h.linkService.DeleteLinkByID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -146,7 +130,7 @@ func (h *Handler) RedirectByShortName(c *gin.Context) {
 		})
 		return
 	}
-	link, err := h.service.GetOriginalURLByShortName(c.Request.Context(), shortName)
+	link, err := h.linkService.GetOriginalURLByShortName(c.Request.Context(), shortName)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -159,7 +143,27 @@ func (h *Handler) RedirectByShortName(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(http.StatusMovedPermanently, link.OriginalUrl)
+	userAgent := c.GetHeader("User-Agent")
+	referer := c.GetHeader("Referer")
+	status, err := SaveConvertToInt32(http.StatusFound)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	err = h.visitService.CreateVisit(c.Request.Context(), link.ID, c.ClientIP(), userAgent, referer, status)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.Redirect(http.StatusFound, link.OriginalUrl)
+}
+
+func (h *Handler) GetVisits(c *gin.Context) {
+	handleGetWithRange[*service.Visit](c, h.visitService.GetVisits, "link_visits")
 }
 
 func GetRequestAndValidate(c *gin.Context) *LinkRequest {
@@ -221,7 +225,8 @@ func SetupRouter() *gin.Engine {
 	return router
 }
 
-func ParseAndValidateQuery(query string) (int32, int32, error) {
+func ParseAndValidateQuery(c *gin.Context) (int32, int32, error) {
+	query := c.Query("range")
 	//Установим значения по умолчанию
 	if query == "" {
 		return Default_Limit, Default_Offset, nil
@@ -264,4 +269,24 @@ func SaveConvertToInt32(n int) (int32, error) {
 		return 0, fmt.Errorf("integer overflow: %d", n)
 	}
 	return int32(n), nil
+}
+
+func handleGetWithRange[T any](
+	c *gin.Context,
+	getFunc func(ctx context.Context, limit, offset int32) ([]T, int64, error),
+	resourceName string,
+) {
+	limit, offset, err := ParseAndValidateQuery(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	items, total, err := getFunc(c.Request.Context(), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Header("Content-Range",
+		fmt.Sprintf("%s %d-%d/%d", resourceName, offset, limit+offset, total))
+	c.JSON(http.StatusOK, items)
 }

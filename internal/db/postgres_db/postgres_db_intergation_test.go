@@ -1,9 +1,8 @@
 // это тесты, которые проверяют непосредственно SQL запросы, сгенерированные sqlc
 // работают ли они корректно с реальной БД
-package db_test
+package postgres_db
 
 import (
-	"code/internal/db/postgres_db"
 	"context"
 	"testing"
 
@@ -13,7 +12,7 @@ import (
 
 func Test_CreateLink(t *testing.T) {
 	t.Parallel()
-	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
+	withTx(t, func(ctx context.Context, q *Queries) {
 		links, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
 
@@ -27,7 +26,7 @@ func Test_CreateLink(t *testing.T) {
 
 func Test_DeleteLinkByID(t *testing.T) {
 	t.Parallel()
-	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
+	withTx(t, func(ctx context.Context, q *Queries) {
 		links, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
 
@@ -42,7 +41,7 @@ func Test_DeleteLinkByID(t *testing.T) {
 
 func Test_GetLinkByID(t *testing.T) {
 	t.Parallel()
-	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
+	withTx(t, func(ctx context.Context, q *Queries) {
 		links, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
 		got, err := q.GetLinkByID(ctx, links[0].ID)
@@ -53,10 +52,10 @@ func Test_GetLinkByID(t *testing.T) {
 
 func Test_GetLinks(t *testing.T) {
 	t.Parallel()
-	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
+	withTx(t, func(ctx context.Context, q *Queries) {
 		links, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
-		got, err := q.GetLinks(ctx, postgres_db.GetLinksParams{
+		got, err := q.GetLinks(ctx, GetLinksParams{
 			Limit:  3,
 			Offset: 0,
 		})
@@ -67,11 +66,11 @@ func Test_GetLinks(t *testing.T) {
 
 func Test_UpdateLinkByID(t *testing.T) {
 	t.Parallel()
-	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
+	withTx(t, func(ctx context.Context, q *Queries) {
 		links, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
 
-		updateParams := postgres_db.UpdateLinkByIDParams{
+		updateParams := UpdateLinkByIDParams{
 			ID:          links[1].ID,
 			OriginalUrl: "https://example2.net/very-very-long-short-name?with=queries",
 			ShortName:   "new_short_name2",
@@ -90,7 +89,7 @@ func Test_UpdateLinkByID(t *testing.T) {
 
 func Test_GetOriginalURLByShortName(t *testing.T) {
 	t.Parallel()
-	withTx(t, func(ctx context.Context, q *postgres_db.Queries) {
+	withTx(t, func(ctx context.Context, q *Queries) {
 		_, err := CreateTestLinks(t, ctx, q, BASE_URL)
 		require.NoError(t, err)
 		shortName := "test-short3"

@@ -24,7 +24,7 @@ lint:
 
 # Запуск тестов
 test:
-	go test ./... -v -race
+	go test ./... -v -race -cover
 
 # ====================
 # LAUNCH FRONTEND + BACKEND

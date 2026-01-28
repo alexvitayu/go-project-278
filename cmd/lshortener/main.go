@@ -3,6 +3,7 @@ package main
 import (
 	"code/internal/config"
 	"code/internal/db/postgres_db"
+	"code/internal/db/visits"
 	"code/internal/handlers"
 	"code/internal/service"
 	"context"
@@ -37,9 +38,11 @@ func main() {
 
 	log.Println("✅ Database connected")
 
-	queries := postgres_db.New(pool)
+	linkRepo := postgres_db.New(pool)
+	visitRepo := visits.New(pool)
 
-	service := service.NewLinkService(queries, cfg)
+	linkService := service.NewLinkService(linkRepo, cfg)
+	visitService := service.NewVisitService(visitRepo)
 
 	router := handlers.SetupRouter()
 
@@ -51,7 +54,7 @@ func main() {
 	// Cloudflare для определения реального IP-адреса клиента
 	router.TrustedPlatform = gin.PlatformCloudflare
 
-	handlers := handlers.NewHandler(service)
+	handlers := handlers.NewHandler(linkService, &visitService)
 
 	router.GET("/", handlers.HomePage)
 	router.POST("/api/links", handlers.CreateLink)
@@ -60,6 +63,7 @@ func main() {
 	router.PUT("/api/links/:id", handlers.UpdateLinkByID)
 	router.DELETE("/api/links/:id", handlers.DeleteLinkByID)
 	router.GET("/r/:code", handlers.RedirectByShortName)
+	router.GET("/api/link_visits", handlers.GetVisits)
 
 	port := cfg.ServerPort
 
