@@ -37,7 +37,10 @@ type CreateLinkInput struct {
 }
 
 // ErrNotFound возвращается, если запись отсутствует.
-var ErrNotFound = errors.New("product not found")
+var (
+	ErrNotFound     = errors.New("product not found")
+	ErrAlreadyInUse = errors.New("short name already in use")
+)
 
 type LinkServer interface {
 	CreateShortLink(ctx context.Context, shortName, originalUrl string) (*Link, error)
@@ -79,11 +82,11 @@ func NewVisitService(v visits.Querier) VisitsService {
 func (l *LinkService) CreateShortLink(ctx context.Context, shortName, originalUrl string) (*Link, error) {
 	links, err := l.q.GetLinks(ctx, store.GetLinksParams{})
 	if err != nil {
-		return &Link{}, fmt.Errorf("createShortLink: %w", err)
+		return &Link{}, fmt.Errorf("getLinks: %w", err)
 	}
 	for _, l := range links {
 		if shortName == l.ShortName {
-			return &Link{}, fmt.Errorf("short_name already exists")
+			return &Link{}, fmt.Errorf("short_name: %w", ErrAlreadyInUse)
 		}
 	}
 	baseUrl := l.cfg.BaseURL
@@ -160,7 +163,7 @@ func (l *LinkService) UpdateLinkByID(ctx context.Context, shortName, originalUrl
 		return &Link{}, fmt.Errorf("updateShortLink: %w", err)
 	}
 	if link.ShortName == shortName {
-		return &Link{}, fmt.Errorf("short_name already exists")
+		return &Link{}, fmt.Errorf("short_name: %w", ErrAlreadyInUse)
 	}
 
 	baseUrl := l.cfg.BaseURL

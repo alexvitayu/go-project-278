@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"code/internal/config"
 	"code/internal/service"
 	"context"
 	"database/sql"
@@ -8,7 +9,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
@@ -27,7 +27,7 @@ const (
 
 type LinkRequest struct {
 	Original_url string `json:"original_url" validate:"required,url"`
-	Short_name   string `json:"short_name"`
+	Short_name   string `json:"short_name" validate:"omitempty,min=3,max=32"`
 }
 
 type Handler struct {
@@ -169,15 +169,15 @@ func (h *Handler) GetVisits(c *gin.Context) {
 func GetRequestAndValidate(c *gin.Context) *LinkRequest {
 	var request LinkRequest
 
-	if err := c.ShouldBindJSON(&request); err != nil { // Ошибка включает и ошибки парсинга, и ошибки валидации
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"error": err.Error(),
+	if err := c.ShouldBindJSON(&request); err != nil { // проверяет валидность JSON
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid request",
 		})
 		return &LinkRequest{}
 	}
 
 	validate := validator.New()
-	if err := validate.Struct(&request); err != nil {
+	if err := validate.Struct(&request); err != nil { // ошибки валидации по структурным тегам
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
@@ -198,10 +198,10 @@ func GetIDFromRequest(c *gin.Context) int64 {
 	return int64(intID)
 }
 
-func SetupRouter() *gin.Engine {
+func SetupRouter(cfg *config.AppConfig) *gin.Engine {
 	// To initialize Sentry's handler, you need to initialize Sentry itself beforehand
 	if err := sentry.Init(sentry.ClientOptions{
-		Dsn: os.Getenv("SENTRY_DSN"),
+		Dsn: cfg.SentryConfig.SentryDSN,
 		// Enable structured logs to Sentry
 		EnableLogs: true,
 	}); err != nil {

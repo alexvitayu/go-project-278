@@ -44,7 +44,7 @@ func main() {
 	linkService := service.NewLinkService(linkRepo, cfg)
 	visitService := service.NewVisitService(visitRepo)
 
-	router := handlers.SetupRouter()
+	router := handlers.SetupRouter(cfg)
 
 	router.Use(gin.Recovery())
 
