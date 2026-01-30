@@ -1,7 +1,7 @@
 package visits_test
 
 import (
-	"code/internal/db/visits"
+	visits2 "code/db/visits"
 	"context"
 	"testing"
 
@@ -11,7 +11,7 @@ import (
 
 func Test_CreateVisit(t *testing.T) {
 	t.Parallel()
-	withTx(t, func(ctx context.Context, q *visits.Queries) {
+	withTx(t, func(ctx context.Context, q *visits2.Queries) {
 		visits := CreateTestVisits(t)
 		err := q.CreateVisit(ctx, *visits[0])
 		require.NoError(t, err)
@@ -20,7 +20,7 @@ func Test_CreateVisit(t *testing.T) {
 
 func Test_GetTotalVisits(t *testing.T) {
 	t.Parallel()
-	withTx(t, func(ctx context.Context, q *visits.Queries) {
+	withTx(t, func(ctx context.Context, q *visits2.Queries) {
 		expectedTotal := int64(3)
 		visits := CreateTestVisits(t)
 		for _, v := range visits {
@@ -35,11 +35,11 @@ func Test_GetTotalVisits(t *testing.T) {
 
 func Test_GetVisits(t *testing.T) {
 	t.Parallel()
-	params := visits.GetVisitsParams{
+	params := visits2.GetVisitsParams{
 		Limit:  2,
 		Offset: 0,
 	}
-	withTx(t, func(ctx context.Context, q *visits.Queries) {
+	withTx(t, func(ctx context.Context, q *visits2.Queries) {
 		visits := CreateTestVisits(t)
 		expectedIP := "192.168.34.189"
 		expectedUserAgent := " Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 YaBrowser/24.1.0.0 Safari/537.36"

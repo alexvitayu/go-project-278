@@ -13,7 +13,7 @@ services:
       POSTGRES_USER: ${DB_USER}          # Пользователь
       POSTGRES_PASSWORD: ${DB_PASSWORD}  # Пароль (простейший для разработки)
     ports:
-      - "5432:5432"
+      - "5433:5432"  ## порты "внешний:внутренний"
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data  # Сохраняем данные между перезапусками
     # Хелсчек для проверки готовности БД к работе

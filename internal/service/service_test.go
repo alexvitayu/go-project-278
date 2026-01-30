@@ -1,9 +1,9 @@
 package service_test
 
 import (
+	"code/db/postgres_db"
+	"code/db/visits"
 	"code/internal/config"
-	"code/internal/db/postgres_db"
-	"code/internal/db/visits"
 	"code/internal/service"
 	"code/internal/service/mocks"
 	"context"

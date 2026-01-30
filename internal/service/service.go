@@ -1,9 +1,9 @@
 package service
 
 import (
+	"code/db/postgres_db"
+	visits2 "code/db/visits"
 	"code/internal/config"
-	store "code/internal/db/postgres_db"
-	"code/internal/db/visits"
 	"context"
 	"crypto/rand"
 	"database/sql"
@@ -37,7 +37,10 @@ type CreateLinkInput struct {
 }
 
 // ErrNotFound возвращается, если запись отсутствует.
-var ErrNotFound = errors.New("product not found")
+var (
+	ErrNotFound     = errors.New("product not found")
+	ErrAlreadyInUse = errors.New("short name already in use")
+)
 
 type LinkServer interface {
 	CreateShortLink(ctx context.Context, shortName, originalUrl string) (*Link, error)
@@ -55,41 +58,41 @@ type VisitServer interface {
 
 // LinkService инкапсулирует работу с sqlc-запросами.
 type LinkService struct {
-	q   store.Querier
+	q   postgres_db.Querier
 	cfg *config.AppConfig
 }
 
 type VisitsService struct {
-	s visits.Querier
+	s visits2.Querier
 }
 
 // NewLinkService конструирует сервис поверх sqlc-слоя.
-func NewLinkService(q store.Querier, config *config.AppConfig) *LinkService {
+func NewLinkService(q postgres_db.Querier, config *config.AppConfig) *LinkService {
 	return &LinkService{
 		q:   q,
 		cfg: config,
 	}
 }
 
-func NewVisitService(v visits.Querier) VisitsService {
+func NewVisitService(v visits2.Querier) VisitsService {
 	return VisitsService{s: v}
 }
 
 // CreateShortLink создаёт короткий url
 func (l *LinkService) CreateShortLink(ctx context.Context, shortName, originalUrl string) (*Link, error) {
-	links, err := l.q.GetLinks(ctx, store.GetLinksParams{})
+	links, err := l.q.GetLinks(ctx, postgres_db.GetLinksParams{})
 	if err != nil {
-		return &Link{}, fmt.Errorf("createShortLink: %w", err)
+		return &Link{}, fmt.Errorf("getLinks: %w", err)
 	}
 	for _, l := range links {
 		if shortName == l.ShortName {
-			return &Link{}, fmt.Errorf("short_name already exists")
+			return &Link{}, fmt.Errorf("short_name: %w", ErrAlreadyInUse)
 		}
 	}
 	baseUrl := l.cfg.BaseURL
 	shortUrl := baseUrl + "/" + shortName
 
-	params := store.CreateLinkParams{
+	params := postgres_db.CreateLinkParams{
 		OriginalUrl: originalUrl,
 		ShortName:   shortName,
 		ShortUrl:    shortUrl,
@@ -110,7 +113,7 @@ func (l *LinkService) CreateShortLink(ctx context.Context, shortName, originalUr
 
 // GetLinks возвращает все объекты из БД
 func (l *LinkService) GetLinks(ctx context.Context, limit, offset int32) ([]*Link, int64, error) {
-	rows, err := l.q.GetLinks(ctx, store.GetLinksParams{
+	rows, err := l.q.GetLinks(ctx, postgres_db.GetLinksParams{
 		Limit:  limit,
 		Offset: offset,
 	})
@@ -160,13 +163,13 @@ func (l *LinkService) UpdateLinkByID(ctx context.Context, shortName, originalUrl
 		return &Link{}, fmt.Errorf("updateShortLink: %w", err)
 	}
 	if link.ShortName == shortName {
-		return &Link{}, fmt.Errorf("short_name already exists")
+		return &Link{}, fmt.Errorf("short_name: %w", ErrAlreadyInUse)
 	}
 
 	baseUrl := l.cfg.BaseURL
 	shortUrl := baseUrl + "/" + shortName
 
-	params := store.UpdateLinkByIDParams{
+	params := postgres_db.UpdateLinkByIDParams{
 		OriginalUrl: originalUrl,
 		ShortName:   shortName,
 		ShortUrl:    shortUrl,
@@ -224,7 +227,7 @@ func GenerateShortName(size int) (string, error) {
 }
 
 func (v *VisitsService) CreateVisit(ctx context.Context, id int64, ip, agent string, referer string, status int32) error {
-	if err := v.s.CreateVisit(ctx, visits.CreateVisitParams{
+	if err := v.s.CreateVisit(ctx, visits2.CreateVisitParams{
 		LinkID:    id,
 		Ip:        ip,
 		UserAgent: agent,
@@ -237,7 +240,7 @@ func (v *VisitsService) CreateVisit(ctx context.Context, id int64, ip, agent str
 }
 
 func (v *VisitsService) GetVisits(ctx context.Context, limit, offset int32) ([]*Visit, int64, error) {
-	rows, err := v.s.GetVisits(ctx, visits.GetVisitsParams{
+	rows, err := v.s.GetVisits(ctx, visits2.GetVisitsParams{
 		Limit:  limit,
 		Offset: offset,
 	})

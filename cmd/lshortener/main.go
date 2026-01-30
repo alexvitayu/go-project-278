@@ -1,9 +1,9 @@
 package main
 
 import (
+	"code/db/postgres_db"
+	"code/db/visits"
 	"code/internal/config"
-	"code/internal/db/postgres_db"
-	"code/internal/db/visits"
 	"code/internal/handlers"
 	"code/internal/service"
 	"context"
@@ -44,7 +44,7 @@ func main() {
 	linkService := service.NewLinkService(linkRepo, cfg)
 	visitService := service.NewVisitService(visitRepo)
 
-	router := handlers.SetupRouter()
+	router := handlers.SetupRouter(cfg)
 
 	router.Use(gin.Recovery())
 

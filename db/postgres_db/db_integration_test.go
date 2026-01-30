@@ -1,10 +1,8 @@
 // db_integration_test.go содержит только TestMain и общие утилиты
-package visits_test
+package postgres_db
 
 import (
-	"code/internal/db/visits"
-	"code/internal/service"
-	"code/migrations"
+	"code/db/migrations"
 	"context"
 	"fmt"
 	"log"
@@ -94,7 +92,7 @@ func NewTestPgxPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	return p, nil
 }
 
-func withTx(t *testing.T, fn func(ctx context.Context, q *visits.Queries)) {
+func withTx(t *testing.T, fn func(ctx context.Context, q *Queries)) {
 	t.Helper()
 
 	// Базовый контекст — из теста.
@@ -114,41 +112,36 @@ func withTx(t *testing.T, fn func(ctx context.Context, q *visits.Queries)) {
 	t.Cleanup(func() { _ = tx.Rollback(ctx) })
 
 	// Сброс последовательности перед тестом
-	_, err = tx.Exec(ctx, `TRUNCATE TABLE visits RESTART IDENTITY CASCADE`)
+	_, err = tx.Exec(ctx, `TRUNCATE TABLE links RESTART IDENTITY CASCADE`)
 	require.NoError(t, err)
 
-	qtx := visits.New(tx) // все вызовы sqlc пойдут внутри этой транзакции
+	qtx := New(tx) // все вызовы sqlc пойдут внутри этой транзакции
 	fn(ctx, qtx)
 }
 
-func CreateTestVisits(t *testing.T) []*visits.CreateVisitParams {
+func CreateTestLinks(t *testing.T, ctx context.Context, q *Queries, baseURL string) ([]*CreateLinkRow, error) {
 	t.Helper()
-	params := []visits.CreateVisitParams{
+	params := []CreateLinkParams{
 		{
-			LinkID:    1,
-			Ip:        "192.168.31.145",
-			UserAgent: "curl/8.14.1",
-			Referer:   service.StrToText(""),
-			Status:    302,
-		},
+			OriginalUrl: "https://example1.net/very-very-long-short-name?with=queries",
+			ShortName:   "test-short1",
+			ShortUrl:    baseURL + "/test-short1"},
 		{
-			LinkID:    2,
-			Ip:        "192.168.34.189",
-			UserAgent: "curl/8.14.1",
-			Referer:   service.StrToText(""),
-			Status:    302,
-		},
+			OriginalUrl: "https://example2.net/very-very-long-short-name?with=queries",
+			ShortName:   "test-short2",
+			ShortUrl:    baseURL + "/test-short2"},
 		{
-			LinkID:    2,
-			Ip:        "192.168.87.876",
-			UserAgent: " Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 YaBrowser/24.1.0.0 Safari/537.36",
-			Referer:   service.StrToText(""),
-			Status:    302,
-		},
+			OriginalUrl: "https://example3.net/very-very-long-short-name?with=queries",
+			ShortName:   "test-short3",
+			ShortUrl:    baseURL + "/test-short3"},
 	}
-	visits := make([]*visits.CreateVisitParams, 0, len(params))
+	links := make([]*CreateLinkRow, 0, len(params))
 	for _, v := range params {
-		visits = append(visits, &v)
+		row, err := q.CreateLink(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+		links = append(links, &row)
 	}
-	return visits
+	return links, nil
 }

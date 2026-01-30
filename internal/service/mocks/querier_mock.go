@@ -3,8 +3,8 @@
 package mocks
 
 import (
-	"code/internal/db/postgres_db"
-	"code/internal/db/visits"
+	"code/db/postgres_db"
+	"code/db/visits"
 	"context"
 
 	"github.com/stretchr/testify/mock"
