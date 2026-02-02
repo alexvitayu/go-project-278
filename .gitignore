@@ -1,2 +1,2 @@
-.env.development
-bin/lshortener
+code/.env.development
+code/bin/lshortener

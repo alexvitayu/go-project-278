@@ -9,9 +9,9 @@ services:
     container_name: lshortener-postgres-dev
     # А так задаются переменные окружения
     environment:
-      POSTGRES_DB: ${DB_NAME}            # Создаст эту БД при первом запуске
-      POSTGRES_USER: ${DB_USER}          # Пользователь
-      POSTGRES_PASSWORD: ${DB_PASSWORD}  # Пароль (простейший для разработки)
+      POSTGRES_DB: ${DB_NAME:-myapp_development}            # Создаст эту БД при первом запуске
+      POSTGRES_USER: ${DB_USER:-postgres}          # Пользователь
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}  # Пароль (простейший для разработки)
     ports:
       - "5433:5432"  ## порты "внешний:внутренний"
     volumes:

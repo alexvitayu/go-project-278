@@ -13,13 +13,11 @@ FROM golang:1.25-alpine AS backend-builder
 # Устанавливаем необходимые инструменты
 RUN apk add --no-cache git
 
-RUN mkdir -p /build/code
-
 # Рабочая директория
 WORKDIR /build/code
 
 # Копируем файлы зависимостей
-COPY go.mod go.sum ./
+COPY code/go.mod go.sum ./
 
 # Скачиваем зависимости с кэшированием
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -61,7 +59,7 @@ COPY --from=backend-builder /build/code/db/migrations /app/db/migrations
 COPY --from=backend-builder /go/bin/goose /usr/local/bin/goose
 
 ## Копируем скрипт запуска
-COPY bin/run.sh /app/bin/run.sh
+COPY code/bin/run.sh /app/bin/run.sh
 RUN chmod +x /app/bin/run.sh
 
 COPY Caddyfile /etc/caddy/Caddyfile
