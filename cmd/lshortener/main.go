@@ -1,16 +1,17 @@
 package main
 
 import (
-	"code/db/postgres_db"
-	"code/db/visits"
-	"code/internal/config"
-	"code/internal/handlers"
-	"code/internal/service"
 	"context"
 	"fmt"
 	"log"
 	"strconv"
 	"time"
+
+	"github.com/alexvitayu/go-project-278/db/postgres_db"
+	"github.com/alexvitayu/go-project-278/db/visits"
+	"github.com/alexvitayu/go-project-278/internal/config"
+	"github.com/alexvitayu/go-project-278/internal/handlers"
+	"github.com/alexvitayu/go-project-278/internal/service"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"

@@ -2,15 +2,16 @@
 package visits_test
 
 import (
-	"code/db/migrations"
-	visits2 "code/db/visits"
-	"code/internal/service"
 	"context"
 	"fmt"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/alexvitayu/go-project-278/db/migrations"
+	"github.com/alexvitayu/go-project-278/db/visits"
+	"github.com/alexvitayu/go-project-278/internal/service"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -94,7 +95,7 @@ func NewTestPgxPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	return p, nil
 }
 
-func withTx(t *testing.T, fn func(ctx context.Context, q *visits2.Queries)) {
+func withTx(t *testing.T, fn func(ctx context.Context, q *visits.Queries)) {
 	t.Helper()
 
 	// Базовый контекст — из теста.
@@ -117,13 +118,13 @@ func withTx(t *testing.T, fn func(ctx context.Context, q *visits2.Queries)) {
 	_, err = tx.Exec(ctx, `TRUNCATE TABLE visits RESTART IDENTITY CASCADE`)
 	require.NoError(t, err)
 
-	qtx := visits2.New(tx) // все вызовы sqlc пойдут внутри этой транзакции
+	qtx := visits.New(tx) // все вызовы sqlc пойдут внутри этой транзакции
 	fn(ctx, qtx)
 }
 
-func CreateTestVisits(t *testing.T) []*visits2.CreateVisitParams {
+func CreateTestVisits(t *testing.T) []*visits.CreateVisitParams {
 	t.Helper()
-	params := []visits2.CreateVisitParams{
+	params := []visits.CreateVisitParams{
 		{
 			LinkID:    1,
 			Ip:        "192.168.31.145",
@@ -146,7 +147,7 @@ func CreateTestVisits(t *testing.T) []*visits2.CreateVisitParams {
 			Status:    302,
 		},
 	}
-	visits := make([]*visits2.CreateVisitParams, 0, len(params))
+	visits := make([]*visits.CreateVisitParams, 0, len(params))
 	for _, v := range params {
 		visits = append(visits, &v)
 	}

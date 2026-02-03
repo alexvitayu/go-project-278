@@ -2,8 +2,6 @@ package handlers_test
 
 import (
 	"bytes"
-	"code/internal/handlers"
-	"code/internal/handlers/mocks"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -12,7 +10,10 @@ import (
 	"strconv"
 	"testing"
 
-	"code/internal/service"
+	"github.com/alexvitayu/go-project-278/internal/handlers"
+	"github.com/alexvitayu/go-project-278/internal/handlers/mocks"
+
+	"github.com/alexvitayu/go-project-278/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

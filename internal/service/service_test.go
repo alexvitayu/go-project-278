@@ -1,14 +1,15 @@
 package service_test
 
 import (
-	"code/db/postgres_db"
-	"code/db/visits"
-	"code/internal/config"
-	"code/internal/service"
-	"code/internal/service/mocks"
 	"context"
 	"testing"
 	"time"
+
+	"github.com/alexvitayu/go-project-278/db/postgres_db"
+	"github.com/alexvitayu/go-project-278/db/visits"
+	"github.com/alexvitayu/go-project-278/internal/config"
+	"github.com/alexvitayu/go-project-278/internal/service"
+	"github.com/alexvitayu/go-project-278/internal/service/mocks"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"

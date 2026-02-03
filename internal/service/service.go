@@ -1,9 +1,6 @@
 package service
 
 import (
-	"code/db/postgres_db"
-	visits2 "code/db/visits"
-	"code/internal/config"
 	"context"
 	"crypto/rand"
 	"database/sql"
@@ -11,6 +8,10 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/alexvitayu/go-project-278/db/postgres_db"
+	"github.com/alexvitayu/go-project-278/db/visits"
+	"github.com/alexvitayu/go-project-278/internal/config"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -63,7 +64,7 @@ type LinkService struct {
 }
 
 type VisitsService struct {
-	s visits2.Querier
+	s visits.Querier
 }
 
 // NewLinkService конструирует сервис поверх sqlc-слоя.
@@ -74,7 +75,7 @@ func NewLinkService(q postgres_db.Querier, config *config.AppConfig) *LinkServic
 	}
 }
 
-func NewVisitService(v visits2.Querier) VisitsService {
+func NewVisitService(v visits.Querier) VisitsService {
 	return VisitsService{s: v}
 }
 
@@ -227,7 +228,7 @@ func GenerateShortName(size int) (string, error) {
 }
 
 func (v *VisitsService) CreateVisit(ctx context.Context, id int64, ip, agent string, referer string, status int32) error {
-	if err := v.s.CreateVisit(ctx, visits2.CreateVisitParams{
+	if err := v.s.CreateVisit(ctx, visits.CreateVisitParams{
 		LinkID:    id,
 		Ip:        ip,
 		UserAgent: agent,
@@ -240,7 +241,7 @@ func (v *VisitsService) CreateVisit(ctx context.Context, id int64, ip, agent str
 }
 
 func (v *VisitsService) GetVisits(ctx context.Context, limit, offset int32) ([]*Visit, int64, error) {
-	rows, err := v.s.GetVisits(ctx, visits2.GetVisitsParams{
+	rows, err := v.s.GetVisits(ctx, visits.GetVisitsParams{
 		Limit:  limit,
 		Offset: offset,
 	})

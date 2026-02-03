@@ -1,4 +1,4 @@
-module code
+module github.com/alexvitayu/go-project-278
 
 go 1.25.5
 

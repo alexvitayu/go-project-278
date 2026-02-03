@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"code/internal/config"
-	"code/internal/service"
 	"context"
 	"database/sql"
 	"errors"
@@ -11,6 +9,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/alexvitayu/go-project-278/internal/config"
+	"github.com/alexvitayu/go-project-278/internal/service"
 
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"

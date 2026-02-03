@@ -2,13 +2,14 @@
 package postgres_db
 
 import (
-	"code/db/migrations"
 	"context"
 	"fmt"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/alexvitayu/go-project-278/db/migrations"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

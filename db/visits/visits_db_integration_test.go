@@ -1,9 +1,10 @@
 package visits_test
 
 import (
-	visits2 "code/db/visits"
 	"context"
 	"testing"
+
+	visits2 "github.com/alexvitayu/go-project-278/db/visits"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

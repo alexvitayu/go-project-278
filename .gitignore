@@ -1,2 +1,4 @@
 .env.development
 bin/lshortener
+node_modules
+.idea

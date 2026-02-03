@@ -3,9 +3,10 @@
 package mocks
 
 import (
-	"code/db/postgres_db"
-	"code/db/visits"
 	"context"
+
+	"github.com/alexvitayu/go-project-278/db/postgres_db"
+	"github.com/alexvitayu/go-project-278/db/visits"
 
 	"github.com/stretchr/testify/mock"
 )

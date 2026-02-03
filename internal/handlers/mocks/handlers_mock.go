@@ -1,8 +1,9 @@
 package mocks
 
 import (
-	"code/internal/service"
 	"context"
+
+	"github.com/alexvitayu/go-project-278/internal/service"
 
 	"github.com/stretchr/testify/mock"
 )
