@@ -64,17 +64,17 @@ dev-app-run:
 dev-migrate-up:
 	export GOOSE_DRIVER=$(GOOSE_DRIVER) && \
     export GOOSE_DBSTRING=$(DATABASE_URL) && \
-    goose -dir ./migrations up
+    goose -dir ./db/migrations up
 
 dev-migrate-down:
 	export GOOSE_DRIVER=$(GOOSE_DRIVER) && \
     export GOOSE_DBSTRING=$(DATABASE_URL) && \
-    goose -dir ./migrations down
+    goose -dir ./db/migrations down
 
 dev-migrate-status:
 	export GOOSE_DRIVER=$(GOOSE_DRIVER) && \
     export GOOSE_DBSTRING=$(DATABASE_URL) && \
-    goose -dir ./migrations status
+    goose -dir ./db/migrations status
 
 # Полная очистка и пересоздание
 dev-db-clean:
