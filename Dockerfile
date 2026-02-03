@@ -13,8 +13,6 @@ FROM golang:1.25-alpine AS backend-builder
 # Устанавливаем необходимые инструменты
 RUN apk add --no-cache git
 
-RUN mkdir -p /build/code
-
 # Рабочая директория
 WORKDIR /build/code
 
@@ -55,7 +53,7 @@ COPY --from=frontend-builder \
   /app/public
 
 ## Копируем миграции
-COPY --from=backend-builder /build/code/db/migrations /app/db/migrations
+COPY --from=backend-builder build/code/db/migrations /app/db/migrations
 
 ## Копируем goose
 COPY --from=backend-builder /go/bin/goose /usr/local/bin/goose
