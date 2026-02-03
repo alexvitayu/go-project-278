@@ -26,13 +26,11 @@ lint:
 test:
 	go test ./... -v -race -cover
 
-
 # ====================
 # LAUNCH FRONTEND + BACKEND
 # ====================
 run:
 	concurrently 'npx start-hexlet-url-shortener-frontend' 'go run ./cmd/lshortener'
-
 
 # ====================
 # DEVELOPMENT (основные команды)
@@ -53,7 +51,6 @@ dev-db-down:
 # Статус БД
 dev-db-status:
 	docker compose -f docker-compose-dev.yaml ps
-
 
 # Запуск приложения (локально)
 dev-app-run:
