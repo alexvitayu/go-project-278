@@ -5,7 +5,7 @@ WORKDIR /build/frontend
 COPY package*.json ./
 
 RUN --mount=type=cache,target=/root/.npm \
-  npm ci npm ci --prefer-offline --no-audit
+  npm ci --prefer-offline --no-audit
 
 # 2) Build backend
 FROM golang:1.25-alpine AS backend-builder
@@ -14,10 +14,10 @@ FROM golang:1.25-alpine AS backend-builder
 RUN apk add --no-cache git
 
 # Рабочая директория
-WORKDIR /build/code
+WORKDIR /build
 
 # Копируем файлы зависимостей
-COPY code/go.mod go.sum ./
+COPY code/go.mod code/go.sum ./
 
 # Скачиваем зависимости с кэшированием
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -27,7 +27,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 RUN go install github.com/pressly/goose/v3/cmd/goose@latest
 
 # Копируем весь код
-COPY . .
+COPY code/ .
 
 # Собираем приложение
 RUN --mount=type=cache,target=/root/.cache/go-build \
@@ -53,7 +53,7 @@ COPY --from=frontend-builder \
   /app/public
 
 ## Копируем миграции
-COPY --from=backend-builder /build/code/db/migrations /app/db/migrations
+COPY --from=backend-builder /build/db/migrations /app/db/migrations
 
 ## Копируем goose
 COPY --from=backend-builder /go/bin/goose /usr/local/bin/goose
